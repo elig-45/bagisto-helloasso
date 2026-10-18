@@ -5,9 +5,9 @@
   <h1>Bagisto HelloAsso</h1>
   <p>Une intégration HelloAsso configurable par canal pour les commandes Bagisto.</p>
   <p>
-    <a href="https://github.com/elig-45/bagisto-helloasso/issues">Signaler un problème</a>
+    <a href="https://github.com/elig-45/bagisto-helloasso/issues/new?template=bug_report.yml">Signaler un problème</a>
     ·
-    <a href="https://github.com/elig-45/bagisto-helloasso/issues">Proposer une évolution</a>
+    <a href="https://github.com/elig-45/bagisto-helloasso/issues/new?template=feature_request.yml">Proposer une évolution</a>
   </p>
 </div>
 

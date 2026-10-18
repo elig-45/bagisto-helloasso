@@ -1,0 +1,42 @@
+name: Proposition d'évolution
+description: Suggérer une amélioration pour l'intégration Bagisto HelloAsso.
+title: "[Évolution] "
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Décrivez le besoin rencontré et le résultat qui vous aiderait. N'incluez
+        aucune clé API, aucun jeton, secret ou donnée personnelle.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Besoin ou problème
+      description: Quel cas d'usage n'est pas couvert aujourd'hui ?
+      placeholder: Je souhaite pouvoir...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Comportement souhaité
+      description: Décrivez la solution ou le parcours attendu.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Solutions de contournement envisagées
+      description: Facultatif
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexte complémentaire
+      description: Versions Bagisto/PHP, contraintes ou exemples pertinents (sans données sensibles).
+    validations:
+      required: false

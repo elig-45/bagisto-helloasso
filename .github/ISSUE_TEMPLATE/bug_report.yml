@@ -1,0 +1,71 @@
+name: Rapport de bug
+description: Signaler un problème avec le paiement HelloAsso pour Bagisto.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Merci de fournir assez de détails pour reproduire le problème. Ne publiez
+        jamais de clé API, jeton, secret, donnée personnelle ou information de paiement.
+
+  - type: input
+    id: package-version
+    attributes:
+      label: Version du package
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: bagisto-version
+    attributes:
+      label: Version de Bagisto
+      placeholder: "2.4.x"
+    validations:
+      required: true
+
+  - type: input
+    id: php-version
+    attributes:
+      label: Version de PHP
+      placeholder: "8.3"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environnement HelloAsso
+      options:
+        - Sandbox
+        - Production
+        - Les deux
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Étapes pour reproduire
+      description: Décrivez les étapes et, si possible, un exemple de configuration expurgé.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Résultat attendu
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Résultat observé et journaux expurgés
+      description: Supprimez les secrets et données personnelles avant de joindre des journaux.
+      render: text
+    validations:
+      required: true

@@ -33,11 +33,6 @@
             <input type="hidden" name="channel_code" value="{{ $selectedChannel }}">
 
             <div class="grid gap-4 md:grid-cols-2">
-                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                    <input type="checkbox" name="enabled" value="1" @checked(old('enabled', $connection?->enabled))>
-                    @lang('helloasso::app.admin.enabled')
-                </label>
-
                 <label class="grid gap-1 text-sm font-medium text-gray-700 dark:text-gray-200">
                     @lang('helloasso::app.admin.environment')
                     <select name="environment" class="rounded border-gray-300 dark:border-gray-700 dark:bg-gray-950">
@@ -128,7 +123,21 @@
             <form id="helloasso-test-form" method="POST" action="{{ route('admin.helloasso.test', $connection->channel_code) }}">@csrf</form>
             <div class="rounded bg-white p-5 text-sm text-gray-600 shadow dark:bg-gray-900 dark:text-gray-300">
                 <p>@lang('helloasso::app.admin.webhook-url') <code>{{ route('helloasso.payment.webhook', $connection->channel_code) }}</code></p>
+                <p class="mt-2">@lang('helloasso::app.admin.activation-location')</p>
                 <p class="mt-2">@lang('helloasso::app.admin.production-disabled-info')</p>
+                <p class="mt-2">
+                    @lang('helloasso::app.admin.cash-in-status')
+                    @if ($connection->cash_in_eligible === true)
+                        @lang('helloasso::app.admin.cash-in-eligible')
+                    @elseif ($connection->cash_in_eligible === false)
+                        @lang('helloasso::app.admin.cash-in-ineligible')
+                    @else
+                        @lang('helloasso::app.admin.cash-in-unknown')
+                    @endif
+                    @if ($connection->cash_in_checked_at)
+                        <span>— @lang('helloasso::app.admin.cash-in-checked', ['date' => $connection->cash_in_checked_at->format('d/m/Y H:i')])</span>
+                    @endif
+                </p>
             </div>
         @endif
     </div>

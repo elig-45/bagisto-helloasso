@@ -48,12 +48,22 @@ class PartnerAuthorizationService
             throw new HelloAssoApiException('HelloAsso authorization failed.', $response->status());
         }
 
-        $connection->forceFill([
-            'organization_slug' => $response->json('organization_slug'),
+        $organizationSlug = $response->json('organization_slug');
+        $identityChanged = $connection->organization_slug !== $organizationSlug;
+
+        $updates = [
+            'organization_slug' => $organizationSlug,
             'access_token' => $response->json('access_token'),
             'refresh_token' => $response->json('refresh_token'),
             'token_expires_at' => now()->addSeconds((int) $response->json('expires_in', 1800)),
-        ])->save();
+        ];
+
+        if ($identityChanged) {
+            $updates['cash_in_eligible'] = null;
+            $updates['cash_in_checked_at'] = null;
+        }
+
+        $connection->forceFill($updates)->save();
 
         return $response->json();
     }

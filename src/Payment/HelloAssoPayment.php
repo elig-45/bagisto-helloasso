@@ -21,9 +21,13 @@ class HelloAssoPayment extends Payment
         return parent::isAvailable()
             && $channelCode
             && Connection::where('channel_code', $channelCode)
-                ->where('enabled', true)
                 ->whereNotNull('organization_slug')
                 ->whereNotNull('client_id')
+                ->where(function ($query) {
+                    $query->where('environment', '!=', 'production')
+                        ->orWhereNull('cash_in_eligible')
+                        ->orWhere('cash_in_eligible', true);
+                })
                 ->exists();
     }
 

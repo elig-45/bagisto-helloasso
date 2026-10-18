@@ -2,6 +2,7 @@
 
 namespace Elig45\BagistoHelloAsso\Http\Controllers\Admin;
 
+use Elig45\BagistoHelloAsso\Exceptions\RefundNotSupportedException;
 use Elig45\BagistoHelloAsso\Models\CheckoutAttempt;
 use Elig45\BagistoHelloAsso\Models\Connection;
 use Elig45\BagistoHelloAsso\Services\OrderSettlementService;
@@ -58,6 +59,9 @@ class OrderController extends Controller
 
             return redirect()->route('admin.sales.orders.view', $orderModel->id)
                 ->with('success', trans('helloasso::app.admin.refund-requested'));
+        } catch (RefundNotSupportedException $exception) {
+            return redirect()->route('admin.sales.orders.view', $orderModel->id)
+                ->withErrors(['helloasso' => $exception->getMessage()]);
         } catch (\Throwable $exception) {
             report($exception);
 

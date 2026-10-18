@@ -16,8 +16,8 @@ class HelloAssoCheckoutService
 
     public function start(Connection $connection, object $cart, int $installmentCount = 1): CheckoutAttempt
     {
-        if (! $connection->enabled || ! $connection->organization_slug) {
-            throw new \RuntimeException('HelloAsso is not enabled for this channel.');
+        if (! $connection->organization_slug) {
+            throw new \RuntimeException('HelloAsso is not configured for this channel.');
         }
 
         if (strtoupper((string) $cart->cart_currency_code) !== 'EUR') {

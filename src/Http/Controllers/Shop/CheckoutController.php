@@ -8,6 +8,7 @@ use Elig45\BagistoHelloAsso\Models\WebhookReceipt;
 use Elig45\BagistoHelloAsso\Services\HelloAssoApiClient;
 use Elig45\BagistoHelloAsso\Services\HelloAssoCheckoutService;
 use Elig45\BagistoHelloAsso\Services\OrderSettlementService;
+use Elig45\BagistoHelloAsso\Services\OrganizationEligibilityService;
 use Elig45\BagistoHelloAsso\Services\WebhookSignatureVerifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -44,7 +45,9 @@ class CheckoutController extends Controller
         }
 
         abort_unless(
-            $connection->enabled && data_get($cart, 'payment.method') === 'helloasso',
+            (bool) core()->getConfigData('sales.payment_methods.helloasso.active')
+                && data_get($cart, 'payment.method') === 'helloasso'
+                && ! ($connection->environment === 'production' && $connection->cash_in_eligible === false),
             403,
         );
 
@@ -160,8 +163,12 @@ class CheckoutController extends Controller
             ->with('error', trans('helloasso::app.checkout.remote-error'));
     }
 
-    public function webhook(Request $request, string $channel, WebhookSignatureVerifier $signatures): JsonResponse
-    {
+    public function webhook(
+        Request $request,
+        string $channel,
+        WebhookSignatureVerifier $signatures,
+        OrganizationEligibilityService $eligibility,
+    ): JsonResponse {
         $connection = Connection::where('channel_code', $channel)->first();
 
         if (! $connection) {
@@ -186,7 +193,9 @@ class CheckoutController extends Controller
             return response()->json(['status' => 'invalid_payload'], 400);
         }
 
-        if (! in_array($payload['eventType'] ?? null, ['Order', 'Payment'], true)) {
+        $eventType = (string) ($payload['eventType'] ?? '');
+
+        if (! in_array($eventType, ['Order', 'Payment', 'Organization', 'Organization.IsCashinCompliant'], true)) {
             return response()->json(['status' => 'ignored']);
         }
 
@@ -195,12 +204,53 @@ class CheckoutController extends Controller
             'payload_hash' => $payloadHash,
         ], [
             'channel_code' => $channel,
-            'event_type' => (string) $payload['eventType'],
+            'event_type' => $eventType,
             'status' => 'received',
         ]);
 
         if (! $receipt->wasRecentlyCreated && $receipt->status === 'processed') {
             return response()->json(['status' => 'duplicate']);
+        }
+
+        if (str_starts_with($eventType, 'Organization')) {
+            try {
+                $processed = Cache::lock('helloasso.webhook.'.$receipt->payload_hash, 600)->block(10, function () use ($payload, $connection, $receipt, $eligibility) {
+                    $receipt->refresh();
+
+                    if ($receipt->status === 'processed') {
+                        return 'duplicate';
+                    }
+
+                    $eventData = (array) ($payload['data'] ?? []);
+
+                    if (! $eligibility->matchesNotification($connection, $eventData)) {
+                        $receipt->update(['status' => 'ignored']);
+
+                        return 'ignored';
+                    }
+
+                    if ($connection->webhook_signature_key) {
+                        $eligibility->applyNotification($connection, $eventData);
+                    } else {
+                        $organization = $this->api->get(
+                            $connection,
+                            '/organizations/'.rawurlencode($connection->organization_slug),
+                        );
+                        $eligibility->recordApiResult($connection, $organization);
+                    }
+
+                    $receipt->update(['status' => 'processed']);
+
+                    return 'processed';
+                });
+
+                return response()->json(['status' => $processed]);
+            } catch (\Throwable $exception) {
+                report($exception);
+                $receipt->update(['status' => 'failed']);
+
+                return response()->json(['status' => 'retry'], 500);
+            }
         }
 
         $intentId = $this->findIntentId($payload['data'] ?? []);

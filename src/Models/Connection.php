@@ -11,8 +11,8 @@ class Connection extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
-        'enabled' => 'boolean',
         'enable_sepa' => 'boolean',
+        'cash_in_eligible' => 'boolean',
         'cancel_future_terms_on_full_refund' => 'boolean',
         'client_secret' => 'encrypted',
         'access_token' => 'encrypted',
@@ -20,6 +20,7 @@ class Connection extends Model
         'webhook_signature_key' => 'encrypted',
         'installment_counts' => 'array',
         'token_expires_at' => 'immutable_datetime',
+        'cash_in_checked_at' => 'immutable_datetime',
     ];
 
     public function isSandbox(): bool

@@ -4,6 +4,7 @@ namespace Elig45\BagistoHelloAsso\Http\Controllers\Admin;
 
 use Elig45\BagistoHelloAsso\Models\Connection;
 use Elig45\BagistoHelloAsso\Services\HelloAssoApiClient;
+use Elig45\BagistoHelloAsso\Services\OrganizationEligibilityService;
 use Elig45\BagistoHelloAsso\Services\PartnerAuthorizationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,7 +32,6 @@ class SettingsController extends Controller
             'client_id' => ['required', 'string', 'max:200'],
             'client_secret' => ['nullable', 'string', 'max:500'],
             'webhook_signature_key' => ['nullable', 'string', 'max:500'],
-            'enabled' => ['sometimes', 'boolean'],
             'enable_sepa' => ['sometimes', 'boolean'],
             'installment_counts' => ['sometimes', 'array'],
             'installment_counts.*' => ['integer', 'between:2,12', 'distinct'],
@@ -70,10 +70,11 @@ class SettingsController extends Controller
             $connection->refresh_token = null;
             $connection->token_expires_at = null;
             $connection->webhook_signature_key = null;
+            $connection->cash_in_eligible = null;
+            $connection->cash_in_checked_at = null;
         }
 
         $connection->fill([
-            'enabled' => $request->boolean('enabled'),
             'environment' => $data['environment'],
             'auth_mode' => $data['auth_mode'],
             'organization_slug' => $data['auth_mode'] === 'association' ? $data['organization_slug'] : $connection->organization_slug,
@@ -99,8 +100,11 @@ class SettingsController extends Controller
             ->with('success', trans('helloasso::app.admin.saved'));
     }
 
-    public function test(string $channel, HelloAssoApiClient $api): RedirectResponse
-    {
+    public function test(
+        string $channel,
+        HelloAssoApiClient $api,
+        OrganizationEligibilityService $eligibility,
+    ): RedirectResponse {
         $connection = Connection::where('channel_code', $channel)->firstOrFail();
 
         if (! $connection->organization_slug) {
@@ -112,15 +116,21 @@ class SettingsController extends Controller
         try {
             $organization = $api->get($connection, '/organizations/'.rawurlencode($connection->organization_slug));
 
-            if (array_key_exists('isCashInCompliant', $organization) && ! $organization['isCashInCompliant']) {
+            $cashInEligible = $eligibility->recordApiResult($connection, $organization);
+
+            if ($cashInEligible === false) {
                 return redirect()->back()->withErrors([
-                    'connection' => trans('helloasso::app.admin.organization-unverified', [
+                    'connection' => trans('helloasso::app.admin.connection-ineligible', [
                         'url' => 'https://admin.helloasso.com/'.$connection->organization_slug.'/verification',
                     ]),
                 ]);
             }
 
-            return redirect()->back()->with('success', trans('helloasso::app.admin.connection-ok'));
+            return redirect()->back()->with('success', trans(
+                $cashInEligible === true
+                    ? 'helloasso::app.admin.connection-ok'
+                    : 'helloasso::app.admin.connection-eligibility-unknown'
+            ));
         } catch (\Throwable $exception) {
             report($exception);
 

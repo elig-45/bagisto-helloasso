@@ -2,6 +2,7 @@
 
 namespace Elig45\BagistoHelloAsso\Services;
 
+use Elig45\BagistoHelloAsso\Exceptions\RefundNotSupportedException;
 use Elig45\BagistoHelloAsso\Models\CheckoutAttempt;
 use Elig45\BagistoHelloAsso\Models\Connection;
 use Elig45\BagistoHelloAsso\Models\HelloAssoPayment;
@@ -17,6 +18,7 @@ class RefundSyncService
         protected OrderRepository $orders,
         protected RefundRepository $refunds,
         protected RefundSyncGuard $guard,
+        protected RefundCapabilityPolicy $refundPolicy,
     ) {}
 
     public function syncOrder(int $orderId, Connection $connection): int
@@ -81,10 +83,6 @@ class RefundSyncService
         $order = $this->orders->findOrFail($orderId);
         $attempt = CheckoutAttempt::where('order_id', $orderId)->firstOrFail();
 
-        if ($connection->auth_mode === 'association') {
-            throw new HelloAssoApiException('API refunds require a partner authorization. Use the HelloAsso back office.');
-        }
-
         $paid = HelloAssoPayment::where('checkout_attempt_id', $attempt->id)
             ->whereIn('state', ['Authorized', 'AuthorizedPreprod'])
             ->get();
@@ -98,6 +96,10 @@ class RefundSyncService
 
         if ($remaining <= 0 || $remaining > $availableTotal) {
             throw new HelloAssoApiException('There is no refundable HelloAsso balance.');
+        }
+
+        if (! $this->refundPolicy->supports($connection->auth_mode, $remaining, $availableTotal)) {
+            throw new RefundNotSupportedException(trans('helloasso::app.admin.association-partial-refund-unsupported'));
         }
 
         foreach ($paid as $payment) {

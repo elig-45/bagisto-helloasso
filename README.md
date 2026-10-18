@@ -73,7 +73,7 @@ php artisan vendor:publish --tag=helloasso-assets --force
 php artisan optimize:clear
 ```
 
-Laravel découvre automatiquement le fournisseur de services du package. Dans l’administration, ouvrez **HelloAsso** pour configurer une connexion, puis activez aussi ce moyen de paiement dans **Configuration → Ventes → Moyens de paiement** pour le canal concerné. Les deux activations sont nécessaires.
+Laravel découvre automatiquement le fournisseur de services du package. Dans l’administration, ouvrez **HelloAsso** pour configurer la connexion du canal. Activez ensuite la méthode une seule fois dans **Configuration → Ventes → Moyens de paiement** ; c’est l’interrupteur d’activation unique de Bagisto.
 
 ## Configuration
 
@@ -81,7 +81,7 @@ Les réglages et les identifiants sont indépendants pour chaque canal Bagisto.
 
 ### Connexion de l’association
 
-Choisissez **Clé API de l’association**, puis définissez le mode, le slug de l’association, le Client ID et le Client Secret fournis par HelloAsso. Les secrets et jetons sont chiffrés en base. Utilisez la fonction de test de connexion avant d’activer le paiement.
+Choisissez **Clé API de l’association**, puis définissez le mode, le slug de l’association, le Client ID et le Client Secret fournis par HelloAsso. Les secrets et jetons sont chiffrés en base. Le test confirme séparément l’accès API et l’éligibilité d’encaissement ; certains rôles HelloAsso ne donnent pas accès au champ d’éligibilité, qui est alors signalé comme inconnu. Un retour d’API qui refuse le Checkout reste déterminant.
 
 ### Connexion partenaire
 
@@ -99,7 +99,7 @@ Les montants sont calculés à partir du total du panier et transmis à HelloAss
 
 ## Paiement et rapprochement
 
-Dans les réglages du canal, copiez l’URL de notification affichée vers HelloAsso et activez les événements `Order` et `Payment`. Pour une connexion partenaire, ajoutez la clé de signature de notification afin de vérifier les notifications HMAC-SHA256.
+Dans les réglages du canal, copiez l’URL de notification affichée vers HelloAsso et activez les événements `Order`, `Payment` et `Organization` si votre compte les propose. Le dernier événement actualise l’éligibilité connue de l’association. Pour une connexion partenaire, ajoutez la clé de signature de notification afin de vérifier les notifications HMAC-SHA256.
 
 Ajoutez le planificateur Laravel à la configuration de la boutique :
 
@@ -118,7 +118,7 @@ Un retour navigateur ne confirme jamais un paiement à lui seul. Au retour clien
 
 ## Remboursements et annulations
 
-La possibilité de rembourser ou d’annuler une échéance dépend de l’API utilisée et des droits HelloAsso du compte. Le remboursement par clé d’association est déprécié : si l’API ne permet pas l’opération, le package guide l’administrateur vers l’espace HelloAsso. Un remboursement local n’est marqué comme effectué qu’après confirmation distante du statut `Processed` ; les opérations réalisées dans HelloAsso peuvent ensuite être synchronisées dans Bagisto.
+La possibilité de rembourser ou d’annuler une échéance dépend des droits HelloAsso du compte. Le package tente le remboursement intégral par clé d’association lorsque l’API l’autorise ; HelloAsso a annoncé le retrait de cet endpoint pour les clés d’association. Les remboursements partiels avec ce mode restent à réaliser dans HelloAsso. Si HelloAsso refuse une opération ou si l’API ne la prend plus en charge, le package n’enregistre pas de remboursement Bagisto et invite l’administrateur à vérifier le statut distant. Un remboursement local n’est marqué comme effectué qu’après confirmation distante du statut `Processed` ; les opérations réalisées dans HelloAsso peuvent ensuite être synchronisées dans Bagisto.
 
 ## Développement et tests
 

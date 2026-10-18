@@ -1,24 +1,70 @@
-# Bagisto HelloAsso
+<a id="readme-top"></a>
 
-Méthode de paiement HelloAsso Checkout pour les boutiques Bagisto 2.4.x sous PHP 8.3 ou 8.4 et Laravel 12. Le package est indépendant par canal Bagisto et utilise le client HTTP Laravel, sans SDK HelloAsso tiers.
+<div align="center">
+  <img src="src/Resources/assets/helloasso.svg" alt="HelloAsso" width="96" height="96">
+  <h1>Bagisto HelloAsso</h1>
+  <p>Une intégration HelloAsso configurable par canal pour les commandes Bagisto.</p>
+  <p>
+    <a href="https://github.com/elig-45/bagisto-helloasso/issues">Signaler un problème</a>
+    ·
+    <a href="https://github.com/elig-45/bagisto-helloasso/issues">Proposer une évolution</a>
+  </p>
+</div>
 
-Version : `1.0.0` · Licence : MIT
+[![PHP](https://img.shields.io/badge/PHP-8.3%20%7C%208.4-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![Bagisto](https://img.shields.io/badge/Bagisto-2.4.x-0E9F6E)](https://bagisto.com/)
+[![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
+[![Licence AGPL-3.0](https://img.shields.io/badge/Licence-AGPL--3.0-blue.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-Pest-6C2EB9)](tests/)
 
-## Fonctions
+## Table des matières
 
-- Paiement en une fois, prélèvement SEPA optionnel et échéanciers de 2 à 12 paiements configurables par canal.
-- Clés API d’association ou autorisation OAuth partenaire avec PKCE.
-- Environnements sandbox et production, vérification de la connexion et de la capacité d’encaissement.
-- Validation serveur par l’API HelloAsso, notifications `Order` et `Payment`, rapprochement planifié et déduplication des événements.
-- Création idempotente des commandes et factures Bagisto selon la règle choisie : premier paiement autorisé, montant total autorisé ou résultat distant vérifié avec commande en attente.
-- Suivi des paiements, échéances, refus, contestations et remboursements dans la commande.
-- Remboursements et annulations distants lorsque l’API et les droits du compte le permettent. Une demande locale n’est jamais affichée comme un remboursement HelloAsso effectué.
+- [À propos](#à-propos)
+- [Compatibilité et prérequis](#compatibilité-et-prérequis)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Paiement et rapprochement](#paiement-et-rapprochement)
+- [Remboursements et annulations](#remboursements-et-annulations)
+- [Développement et tests](#développement-et-tests)
+- [Périmètre et prochaines étapes](#périmètre-et-prochaines-étapes)
+- [Contribuer](#contribuer)
+- [Licence](#licence)
+- [Remerciements](#remerciements)
 
-Le package vise uniquement le paiement de commandes Bagisto en euros. Il ne gère pas les campagnes, la billetterie, les adhésions ni les dons.
+## À propos
+
+Bagisto HelloAsso ajoute HelloAsso Checkout aux moyens de paiement de [Bagisto](https://bagisto.com/). Le package utilise le client HTTP Laravel, sans SDK HelloAsso supplémentaire. Chaque canal dispose de sa propre connexion et de ses propres réglages.
+
+Fonctionnalités principales :
+
+- Paiement par carte, SEPA optionnel et échéanciers configurables de 2 à 12 paiements.
+- Connexion par clé API d’association ou OAuth partenaire avec PKCE.
+- Environnements sandbox et production, avec test de connexion et de capacité d’encaissement.
+- Validation serveur auprès de HelloAsso, notifications `Order` et `Payment`, rapprochement et déduplication des événements.
+- Création idempotente des commandes et factures selon la règle de confirmation choisie.
+- Suivi des paiements, échéances, refus, contestations et remboursements dans l’administration de la commande.
+- Remboursement et annulation par API lorsque les droits le permettent ; sinon, le package indique la démarche à effectuer dans HelloAsso.
+
+Ce package couvre le règlement de commandes Bagisto en euros. Les campagnes, la billetterie, les adhésions et les dons ne sont pas dans son périmètre.
+
+### Technologies
+
+- [Bagisto 2.4](https://bagisto.com/) et [Laravel 12](https://laravel.com/)
+- PHP 8.3 ou 8.4
+- HTTP Client Laravel pour les API HelloAsso
+- [Pest](https://pestphp.com/) pour les tests
+
+## Compatibilité et prérequis
+
+- Bagisto 2.4.x sur Laravel 12.
+- PHP 8.3 ou 8.4 avec les extensions requises par Bagisto.
+- Une clé `APP_KEY` définie et stable : les secrets, jetons et instantanés de panier temporaires sont chiffrés avec cette clé.
+- Un accès HTTPS sortant vers l’API HelloAsso, ainsi qu’un planificateur Laravel actif pour le rapprochement périodique.
+- Un compte d’association HelloAsso autorisé à encaisser, ou un compte partenaire configuré pour OAuth.
 
 ## Installation
 
-Dans une boutique Bagisto 2.4.x :
+Depuis la racine de votre boutique Bagisto :
 
 ```sh
 composer require elig45/bagisto-helloasso:^1.0
@@ -27,59 +73,51 @@ php artisan vendor:publish --tag=helloasso-assets --force
 php artisan optimize:clear
 ```
 
-Laravel découvre automatiquement le fournisseur de services du package. Vérifiez que `APP_KEY` est défini et conservé : les secrets, jetons et données temporaires de panier sont chiffrés avec cette clé.
+Laravel découvre automatiquement le fournisseur de services du package. Dans l’administration, ouvrez **HelloAsso** pour configurer une connexion, puis activez aussi ce moyen de paiement dans **Configuration → Ventes → Moyens de paiement** pour le canal concerné. Les deux activations sont nécessaires.
 
 ## Configuration
 
-Dans l’administration, ouvrez **HelloAsso** et sélectionnez le canal à configurer. Enregistrez une connexion distincte pour chaque canal. Activez ensuite aussi HelloAsso dans **Configuration → Ventes → Moyens de paiement** pour le canal correspondant ; Bagisto et la connexion HelloAsso doivent tous deux être actifs.
+Les réglages et les identifiants sont indépendants pour chaque canal Bagisto.
 
-### Connexion d’association
+### Connexion de l’association
 
-Choisissez le mode **Clé API de l’association**, sélectionnez l’environnement et saisissez le slug de l’association, le Client ID et le Client Secret obtenus dans son espace HelloAsso. Les secrets et jetons sont chiffrés en base de données.
+Choisissez **Clé API de l’association**, puis définissez le mode, le slug de l’association, le Client ID et le Client Secret fournis par HelloAsso. Les secrets et jetons sont chiffrés en base. Utilisez la fonction de test de connexion avant d’activer le paiement.
 
 ### Connexion partenaire
 
-Choisissez **OAuth partenaire**, enregistrez le Client ID et le Client Secret du partenaire puis utilisez **Connecter une association**. Le domaine et l’URL HTTPS de rappel doivent être autorisés dans le client API HelloAsso. L’association choisie pendant la mire OAuth est enregistrée sur le canal.
+Choisissez **OAuth partenaire**, saisissez les identifiants du client partenaire puis utilisez **Connecter une association**. Le domaine de la boutique et son URL HTTPS de rappel doivent être autorisés dans le client API HelloAsso. L’association sélectionnée pendant OAuth est liée au canal.
 
-### Options de paiement
+### Moyens de paiement et échéanciers
 
-- **Sandbox** est le mode par défaut. Utilisez des identifiants d’association sandbox et une association sandbox vérifiée pour les essais.
-- Le prélèvement SEPA est proposé en plus de la carte lorsque l’association l’autorise. Une échéance SEPA peut rester en attente de validation bancaire pendant plusieurs jours ; choisissez la règle de commande en conséquence.
-- Cochez les échéanciers autorisés et définissez la part initiale. Les échéances sont mensuelles, au plus une par mois, au plus le 27 et sur une période maximale de douze mois.
-- La règle **premier paiement autorisé** permet de traiter la commande après son premier paiement accepté. **Montant total autorisé** attend l’encaissement complet. **Résultat distant vérifié** peut créer une commande avec facture en attente de paiement.
+- Commencez en **sandbox** avec les identifiants et une association de test HelloAsso.
+- La carte est proposée par défaut. Le SEPA peut être activé si l’association l’autorise ; son statut peut rester en attente plusieurs jours.
+- Activez les échéanciers proposés et réglez leur premier versement. Les dates suivent les contraintes HelloAsso : au plus un versement mensuel, au plus le 27, avec un maximum de 12 versements.
+- Choisissez quand Bagisto rend la commande traitable : après le premier paiement autorisé, après autorisation du montant total ou après vérification du résultat distant avec une commande en attente.
 
-## Notifications et rapprochement
+Les montants sont calculés à partir du total du panier et transmis à HelloAsso en euros. L’intention de paiement, le canal, le plan et le montant attendu sont conservés pour sécuriser le rapprochement.
 
-L’écran de configuration affiche l’URL de notification du canal. Dans HelloAsso, configurez les événements `Order` et `Payment` vers cette URL. Pour un compte partenaire, copiez la clé de signature de notification dans **Clé de signature des notifications** ; les notifications signées sont alors vérifiées avec HMAC-SHA256.
+## Paiement et rapprochement
 
-Ajoutez l’exécution du planificateur Laravel sur la boutique :
+Dans les réglages du canal, copiez l’URL de notification affichée vers HelloAsso et activez les événements `Order` et `Payment`. Pour une connexion partenaire, ajoutez la clé de signature de notification afin de vérifier les notifications HMAC-SHA256.
+
+Ajoutez le planificateur Laravel à la configuration de la boutique :
 
 ```cron
 * * * * * cd /chemin/vers/bagisto && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Le package rapproche les intentions en attente toutes les cinq minutes et synchronise les paiements et remboursements périodiquement. Les commandes sont également disponibles pour une exécution manuelle :
+Les intentions en attente sont rapprochées périodiquement. Les commandes suivantes sont également disponibles pour lancer des opérations manuellement :
 
 ```sh
 php artisan helloasso:reconcile --limit=100
 php artisan helloasso:refresh-tokens
 ```
 
-Les redirections du navigateur ne valident jamais un paiement à elles seules. Le retour client, les notifications et la tâche planifiée interrogent l’API HelloAsso avant toute création ou mise à jour d’une commande.
+Un retour navigateur ne confirme jamais un paiement à lui seul. Au retour client, à la réception des notifications et lors du rapprochement, le package vérifie l’état auprès de l’API HelloAsso avant de créer ou modifier la commande. Les contrôles incluent le canal, l’association, la devise, le montant et l’intention de paiement.
 
 ## Remboursements et annulations
 
-Les remboursements par API dépendent du mode d’autorisation et des droits HelloAsso. L’API de remboursement par clé d’association étant dépréciée, le package indique le recours à l’espace HelloAsso lorsqu’une demande distante n’est pas autorisée. Le remboursement Bagisto n’est créé qu’après confirmation du statut `Processed` par HelloAsso. Synchronisez ensuite la commande pour importer les remboursements réalisés dans l’espace HelloAsso.
-
-L’annulation des échéances futures est proposée sur les commandes échelonnées. Si HelloAsso refuse l’opération ou demande une vérification supplémentaire, vérifiez d’abord le résultat dans son espace avant de modifier la commande Bagisto.
-
-## Sécurité et mise en production
-
-- La sandbox est sélectionnée par défaut. Ne stockez pas de secrets dans le dépôt, les journaux ou les captures d’écran.
-- Les paiements de production exigent des identifiants de production et une association autorisée à encaisser. Testez d’abord le parcours complet en sandbox, puis activez la production canal par canal.
-- `cart_snapshot` est chiffré et supprimé après la création de commande ou l’expiration d’une tentative sans commande. Les réponses d’API conservées sont limitées aux informations de rapprochement et de paiement nécessaires.
-- Le réseau de la boutique doit pouvoir joindre `api.helloasso.com` ou `api.helloasso-sandbox.com`. Le planificateur doit tourner régulièrement pour suivre les échéances, paiements SEPA et remboursements différés.
-- Pour une sortie réseau contrôlée, définissez `HELLOASSO_HTTP_PROXY` vers un proxy HTTPS qui autorise uniquement les domaines HelloAsso. Le client API, l’authentification et OAuth utilisent ce proxy.
+La possibilité de rembourser ou d’annuler une échéance dépend de l’API utilisée et des droits HelloAsso du compte. Le remboursement par clé d’association est déprécié : si l’API ne permet pas l’opération, le package guide l’administrateur vers l’espace HelloAsso. Un remboursement local n’est marqué comme effectué qu’après confirmation distante du statut `Processed` ; les opérations réalisées dans HelloAsso peuvent ensuite être synchronisées dans Bagisto.
 
 ## Développement et tests
 
@@ -91,6 +129,46 @@ composer lint
 composer check-translations
 ```
 
-La CI vérifie PHP 8.3 et 8.4. Les tests couvrent le calcul des échéances, l’authentification et la rotation des jetons, la reprise après un `401`, la validation stricte des montants et la cohérence des 22 catalogues de traduction.
+Les tests couvrent notamment l’authentification et le renouvellement des jetons, les montants, les échéanciers, les retours non fiables, les notifications répétées et les 22 catalogues de traduction.
 
-Pour une recette de bout en bout, utilisez une association HelloAsso sandbox vérifiée, activez les notifications de cette association et vérifiez que la boutique dispose d’une sortie réseau et d’un planificateur actif.
+Pour une recette complète, utilisez des identifiants sandbox, configurez les notifications HelloAsso et vérifiez l’accès réseau ainsi que l’exécution régulière du planificateur.
+
+### Proxy réseau
+
+Pour contrôler les connexions sortantes, configurez `HELLOASSO_HTTP_PROXY` vers un proxy HTTPS avec liste d’autorisation limitée aux domaines HelloAsso. Les appels API, l’authentification et OAuth utilisent ce proxy.
+
+## Périmètre et prochaines étapes
+
+- [x] Paiements de commandes Bagisto par carte, SEPA optionnel et échéancier.
+- [x] Connexion par association et OAuth partenaire, sandbox et production.
+- [x] Validation distante, notifications, déduplication et rapprochement.
+- [x] Suivi des échéances et synchronisation des remboursements.
+- [ ] Recette de bout en bout sur une boutique Bagisto avec identifiants sandbox et notifications d’association configurées.
+- [ ] Étendre les traductions au-delà du français et de l’anglais.
+
+Les changements et anomalies peuvent être suivis dans les [issues du dépôt](https://github.com/elig-45/bagisto-helloasso/issues).
+
+## Contribuer
+
+Les contributions sont les bienvenues. Avant d’ouvrir une pull request, lancez les vérifications du package :
+
+```sh
+composer validate --strict
+composer test
+composer lint
+composer check-translations
+```
+
+Pour une évolution importante, ouvrez d’abord une issue afin de discuter du besoin et de sa compatibilité avec Bagisto.
+
+## Licence
+
+Distribué sous licence GNU Affero General Public License v3.0 uniquement. Consultez [LICENSE](LICENSE).
+
+## Remerciements
+
+- [Documentation API HelloAsso](https://dev.helloasso.com/docs)
+- [Best-README-Template](https://github.com/othneildrew/Best-README-Template), dont la structure a inspiré ce README.
+- Les mainteneurs et contributeurs de [Bagisto](https://github.com/bagisto/bagisto) et [Laravel](https://github.com/laravel/laravel).
+
+<p align="right"><a href="#readme-top">Retour en haut ↑</a></p>

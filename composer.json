@@ -2,7 +2,7 @@
     "name": "elig45/bagisto-helloasso",
     "description": "HelloAsso checkout payment method for Bagisto 2.4",
     "type": "library",
-    "license": "MIT",
+    "license": "AGPL-3.0-only",
     "require": {
         "php": "^8.3 || ^8.4",
         "illuminate/support": "^12.0",

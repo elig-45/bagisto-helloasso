@@ -8,10 +8,25 @@
         "illuminate/support": "^12.0",
         "illuminate/http": "^12.0"
     },
+    "require-dev": {
+        "orchestra/testbench": "^10.0",
+        "pestphp/pest": "^3.8",
+        "laravel/pint": "^1.18"
+    },
     "autoload": {
         "psr-4": {
             "Elig45\\BagistoHelloAsso\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Elig45\\BagistoHelloAsso\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "lint": "pint --test",
+        "check-translations": "php scripts/check-translations.php"
     },
     "extra": {
         "laravel": {
@@ -21,5 +36,10 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
 }

@@ -32,6 +32,7 @@ class PartnerAuthorizationService
     public function exchange(Connection $connection, string $code, string $verifier, string $redirectUri): array
     {
         $response = Http::asForm()
+            ->withOptions(array_filter(['proxy' => config('helloasso.proxy')]))
             ->acceptJson()
             ->timeout(20)
             ->post($connection->oauthBaseUrl().'/oauth2/token', [

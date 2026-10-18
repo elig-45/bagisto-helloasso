@@ -79,6 +79,7 @@ L’annulation des échéances futures est proposée sur les commandes échelonn
 - Les paiements de production exigent des identifiants de production et une association autorisée à encaisser. Testez d’abord le parcours complet en sandbox, puis activez la production canal par canal.
 - `cart_snapshot` est chiffré et supprimé après la création de commande ou l’expiration d’une tentative sans commande. Les réponses d’API conservées sont limitées aux informations de rapprochement et de paiement nécessaires.
 - Le réseau de la boutique doit pouvoir joindre `api.helloasso.com` ou `api.helloasso-sandbox.com`. Le planificateur doit tourner régulièrement pour suivre les échéances, paiements SEPA et remboursements différés.
+- Pour une sortie réseau contrôlée, définissez `HELLOASSO_HTTP_PROXY` vers un proxy HTTPS qui autorise uniquement les domaines HelloAsso. Le client API, l’authentification et OAuth utilisent ce proxy.
 
 ## Développement et tests
 

@@ -39,6 +39,7 @@ class AccessTokenService
                 ];
 
             $response = Http::asForm()
+                ->withOptions(array_filter(['proxy' => config('helloasso.proxy')]))
                 ->acceptJson()
                 ->timeout(20)
                 ->post($connection->oauthBaseUrl().'/oauth2/token', $form);

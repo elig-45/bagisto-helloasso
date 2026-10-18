@@ -67,6 +67,7 @@ class HelloAssoApiClient
         array $query,
     ): Response {
         $request = Http::acceptJson()
+            ->withOptions(array_filter(['proxy' => config('helloasso.proxy')]))
             ->withToken($token)
             ->timeout(25)
             ->connectTimeout(8);

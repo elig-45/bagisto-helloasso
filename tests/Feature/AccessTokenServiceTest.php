@@ -3,6 +3,7 @@
 use Elig45\BagistoHelloAsso\Models\Connection;
 use Elig45\BagistoHelloAsso\Services\AccessTokenService;
 use Elig45\BagistoHelloAsso\Services\HelloAssoApiClient;
+use Elig45\BagistoHelloAsso\Services\HelloAssoApiException;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
 
@@ -79,4 +80,25 @@ it('refreshes a token after an unauthorized response and retries once', function
 
     Http::assertSent(fn (ClientRequest $request) => str_ends_with($request->url(), '/payments/9002')
         && $request->hasHeader('Authorization', 'Bearer access-after-refresh'));
+});
+
+it('preserves HelloAsso API failures as failed requests', function () {
+    $connection = Connection::create([
+        'channel_code' => 'mejf',
+        'environment' => 'sandbox',
+        'auth_mode' => 'association',
+        'organization_slug' => 'mejf-test',
+        'client_id' => 'sandbox-client',
+        'access_token' => 'valid-access',
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    Http::fake(['*' => Http::response(['message' => 'Temporary API error'], 503)]);
+
+    try {
+        (new HelloAssoApiClient(new AccessTokenService))->get($connection, '/payments/9003');
+        $this->fail('A failed HelloAsso response must not be treated as a successful payment lookup.');
+    } catch (HelloAssoApiException $exception) {
+        expect($exception->statusCode)->toBe(503);
+    }
 });

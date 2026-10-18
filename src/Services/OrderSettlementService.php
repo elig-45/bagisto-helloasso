@@ -56,18 +56,7 @@ class OrderSettlementService
             '/organizations/'.rawurlencode($connection->organization_slug).'/checkout-intents/'.$attempt->checkout_intent_id,
         );
 
-        $metadata = $this->decodeMetadata($intent['metadata'] ?? []);
-        $expectedMetadata = [
-            'bagisto_ref' => (string) $attempt->reference,
-            'cart_id' => (string) $attempt->cart_id,
-            'channel_code' => (string) $attempt->channel_code,
-            'organization_slug' => (string) $attempt->organization_slug,
-            'currency' => (string) $attempt->currency,
-        ];
-
-        if ((! isset($intent['id']) || (int) $intent['id'] !== (int) $attempt->checkout_intent_id)
-            || collect($expectedMetadata)->contains(fn ($value, $key) => (string) ($metadata[$key] ?? '') !== $value)
-        ) {
+        if (! $this->intentMatchesAttempt($attempt, $intent)) {
             $attempt->update(['status' => 'metadata_mismatch', 'last_checked_at' => now()]);
 
             return 'metadata_mismatch';
@@ -302,6 +291,30 @@ class OrderSettlementService
         }
 
         return is_array($metadata) ? $metadata : [];
+    }
+
+    protected function intentMatchesAttempt(CheckoutAttempt $attempt, array $intent): bool
+    {
+        if (! isset($intent['id']) || (int) $intent['id'] !== (int) $attempt->checkout_intent_id) {
+            return false;
+        }
+
+        $metadata = $this->decodeMetadata($intent['metadata'] ?? []);
+        $expected = [
+            'bagisto_ref' => (string) $attempt->reference,
+            'cart_id' => (string) $attempt->cart_id,
+            'channel_code' => (string) $attempt->channel_code,
+            'organization_slug' => (string) $attempt->organization_slug,
+            'currency' => (string) $attempt->currency,
+        ];
+
+        foreach ($expected as $key => $value) {
+            if ((string) ($metadata[$key] ?? '') !== $value) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     protected function safeOrderData(array $order): array

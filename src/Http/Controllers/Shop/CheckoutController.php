@@ -8,6 +8,7 @@ use Elig45\BagistoHelloAsso\Models\WebhookReceipt;
 use Elig45\BagistoHelloAsso\Services\HelloAssoApiClient;
 use Elig45\BagistoHelloAsso\Services\HelloAssoCheckoutService;
 use Elig45\BagistoHelloAsso\Services\OrderSettlementService;
+use Elig45\BagistoHelloAsso\Services\WebhookSignatureVerifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -159,7 +160,7 @@ class CheckoutController extends Controller
             ->with('error', trans('helloasso::app.checkout.remote-error'));
     }
 
-    public function webhook(Request $request, string $channel): JsonResponse
+    public function webhook(Request $request, string $channel, WebhookSignatureVerifier $signatures): JsonResponse
     {
         $connection = Connection::where('channel_code', $channel)->first();
 
@@ -173,11 +174,7 @@ class CheckoutController extends Controller
         if (
             $connection->webhook_signature_key
             && (
-                ! is_string($signature)
-                || ! hash_equals(
-                    hash_hmac('sha256', $body, $connection->webhook_signature_key),
-                    strtolower($signature),
-                )
+                ! $signatures->isValid($body, $signature, $connection->webhook_signature_key)
             )
         ) {
             return response()->json(['status' => 'invalid_signature'], 400);

@@ -25,7 +25,7 @@ return [
         'installments' => 'Available installment plans',
         'order-policy' => 'Order processing policy',
         'first-authorized' => 'Process after the first authorized payment',
-        'full-amount' => 'Wait until the full amount is authorized',
+        'full-amount' => 'Process after the full amount is authorized',
         'verified-return' => 'Create a pending order after remote verification',
         'cancel-future-terms' => 'Cancel future terms when fully refunding an installment',
         'save' => 'Save settings',

@@ -53,3 +53,47 @@ it('does not authorize pending SEPA or production preproduction payments', funct
         ->and($method->invoke($service, 'AuthorizedPreprod', $production))->toBeFalse()
         ->and($method->invoke($service, 'Authorized', $production))->toBeTrue();
 });
+
+it('creates a pending Bagisto order for a SEPA payment awaiting bank validation', function () {
+    $service = (new ReflectionClass(OrderSettlementService::class))->newInstanceWithoutConstructor();
+    $method = new ReflectionMethod(OrderSettlementService::class, 'shouldCreateOrder');
+
+    expect($method->invoke($service, 'first_authorized', false, false, true))->toBeTrue()
+        ->and($method->invoke($service, 'full_amount', false, false, true))->toBeTrue()
+        ->and($method->invoke($service, 'first_authorized', false, false, false))->toBeFalse();
+});
+
+it('recognizes waiting SEPA states without treating refused payments as pending', function () {
+    $service = (new ReflectionClass(OrderSettlementService::class))->newInstanceWithoutConstructor();
+    $method = new ReflectionMethod(OrderSettlementService::class, 'hasPendingSepaPayment');
+
+    expect($method->invoke($service, [['paymentMeans' => 'Sepa', 'state' => 'WaitingBankValidation']]))->toBeTrue()
+        ->and($method->invoke($service, [['paymentMeans' => 'Sepa', 'state' => 'Refused']]))->toBeFalse()
+        ->and($method->invoke($service, [['paymentMeans' => 'Card', 'state' => 'Pending']]))->toBeFalse();
+});
+
+it('keeps SEPA installment orders pending until the full amount is authorized', function () {
+    $service = (new ReflectionClass(OrderSettlementService::class))->newInstanceWithoutConstructor();
+    $method = new ReflectionMethod(OrderSettlementService::class, 'isOrderReady');
+    $connection = new Connection(['order_policy' => 'first_authorized']);
+    $installmentAttempt = new CheckoutAttempt(['installment_count' => 3]);
+    $sepaPayments = [
+        ['paymentMeans' => 'Sepa', 'state' => 'Authorized', 'amount' => 5000],
+        ['paymentMeans' => 'Sepa', 'state' => 'Pending', 'amount' => 2500],
+        ['paymentMeans' => 'Sepa', 'state' => 'Pending', 'amount' => 2500],
+    ];
+
+    expect($method->invoke($service, $connection, $installmentAttempt, $sepaPayments, 5000, false))->toBeFalse()
+        ->and($method->invoke($service, $connection, $installmentAttempt, $sepaPayments, 10000, true))->toBeTrue();
+});
+
+it('keeps single SEPA and card installment readiness on the configured policy', function () {
+    $service = (new ReflectionClass(OrderSettlementService::class))->newInstanceWithoutConstructor();
+    $method = new ReflectionMethod(OrderSettlementService::class, 'isOrderReady');
+    $connection = new Connection(['order_policy' => 'first_authorized']);
+    $singlePaymentAttempt = new CheckoutAttempt(['installment_count' => 1]);
+    $cardInstallmentAttempt = new CheckoutAttempt(['installment_count' => 3]);
+
+    expect($method->invoke($service, $connection, $singlePaymentAttempt, [['paymentMeans' => 'Sepa']], 10000, false))->toBeTrue()
+        ->and($method->invoke($service, $connection, $cardInstallmentAttempt, [['paymentMeans' => 'Card']], 5000, false))->toBeTrue();
+});

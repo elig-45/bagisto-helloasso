@@ -93,6 +93,7 @@ Choisissez **OAuth partenaire**, saisissez les identifiants du client partenaire
 - La carte est proposée par défaut. Le SEPA peut être activé si l’association l’autorise ; son statut peut rester en attente plusieurs jours.
 - Activez les échéanciers proposés et réglez leur premier versement. Les dates suivent les contraintes HelloAsso : au plus un versement mensuel, au plus le 27, avec un maximum de 12 versements.
 - Choisissez quand Bagisto rend la commande traitable : après le premier paiement autorisé, après autorisation du montant total ou après vérification du résultat distant avec une commande en attente.
+- Un prélèvement SEPA en validation bancaire crée une commande Bagisto en attente de paiement. Pour un échéancier SEPA, la commande reste en attente et la facture n’est marquée payée qu’après l’autorisation de toutes les échéances.
 
 Les montants sont calculés à partir du total du panier et transmis à HelloAsso en euros. L’intention de paiement, le canal, le plan et le montant attendu sont conservés pour sécuriser le rapprochement.
 

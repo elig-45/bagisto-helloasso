@@ -89,6 +89,8 @@ class OrderSettlementService
         $authorizedCents = (int) $authorized->sum('amount');
         $hasAuthorized = $authorized->isNotEmpty();
         $fullyPaid = $authorizedCents >= $attempt->total_amount;
+        $hasSepaPayment = $this->hasSepaPayment($remotePayments);
+        $hasPendingSepaPayment = $this->hasPendingSepaPayment($remotePayments);
         $remoteOrderId = (int) ($remoteOrder['id'] ?? 0) ?: null;
 
         $attempt->forceFill([
@@ -99,12 +101,7 @@ class OrderSettlementService
         ])->save();
 
         $policy = $connection->order_policy;
-        $createOrder = match ($policy) {
-            'verified_return' => true,
-            'first_authorized' => $hasAuthorized,
-            'full_amount' => $fullyPaid,
-            default => $hasAuthorized,
-        };
+        $createOrder = $this->shouldCreateOrder($policy, $hasAuthorized, $fullyPaid, $hasPendingSepaPayment);
 
         if (! $createOrder) {
             return $hasAuthorized ? 'payment_recorded' : 'pending';
@@ -191,11 +188,13 @@ class OrderSettlementService
                 }
             }
 
-            $ready = match ($connection->order_policy) {
-                'full_amount' => $fullyPaid,
-                'verified_return', 'first_authorized' => $authorizedCents > 0,
-                default => $authorizedCents > 0,
-            };
+            $ready = $this->isOrderReady(
+                $connection,
+                $attempt,
+                $remotePayments,
+                $authorizedCents,
+                $fullyPaid,
+            );
 
             $this->orders->updateOrderStatus(
                 $order,
@@ -273,6 +272,70 @@ class OrderSettlementService
     {
         return $state === 'Authorized'
             || ($connection->isSandbox() && $state === 'AuthorizedPreprod');
+    }
+
+    protected function hasSepaPayment(array $payments): bool
+    {
+        foreach ($payments as $payment) {
+            if (strtoupper((string) ($payment['paymentMeans'] ?? '')) === 'SEPA') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function hasPendingSepaPayment(array $payments): bool
+    {
+        foreach ($payments as $payment) {
+            if (
+                strtoupper((string) ($payment['paymentMeans'] ?? '')) === 'SEPA'
+                && in_array($payment['state'] ?? '', [
+                    'Init',
+                    'Pending',
+                    'Registered',
+                    'Waiting',
+                    'WaitingBankValidation',
+                    'WaitingBankWithdraw',
+                ], true)
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function isOrderReady(
+        Connection $connection,
+        CheckoutAttempt $attempt,
+        array $payments,
+        int $authorizedCents,
+        bool $fullyPaid,
+    ): bool {
+        if ($attempt->installment_count > 1 && $this->hasSepaPayment($payments)) {
+            return $fullyPaid;
+        }
+
+        return match ($connection->order_policy) {
+            'full_amount' => $fullyPaid,
+            'verified_return', 'first_authorized' => $authorizedCents > 0,
+            default => $authorizedCents > 0,
+        };
+    }
+
+    protected function shouldCreateOrder(
+        string $policy,
+        bool $hasAuthorized,
+        bool $fullyPaid,
+        bool $hasPendingSepaPayment,
+    ): bool {
+        return match ($policy) {
+            'verified_return' => true,
+            'first_authorized' => $hasAuthorized || $hasPendingSepaPayment,
+            'full_amount' => $fullyPaid || $hasPendingSepaPayment,
+            default => $hasAuthorized || $hasPendingSepaPayment,
+        };
     }
 
     protected function orderTotalMatches(array $order, int $expectedCents): bool

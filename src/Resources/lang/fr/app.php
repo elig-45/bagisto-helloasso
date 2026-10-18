@@ -25,7 +25,7 @@ return [
         'installments' => 'Plans d’échéances disponibles',
         'order-policy' => 'Règle de traitement des commandes',
         'first-authorized' => 'Traiter après le premier paiement autorisé',
-        'full-amount' => 'Attendre l’autorisation du montant total',
+        'full-amount' => 'Traiter après autorisation du montant total',
         'verified-return' => 'Créer une commande en attente après vérification distante',
         'cancel-future-terms' => 'Annuler les échéances futures lors du remboursement complet d’une échéance',
         'save' => 'Enregistrer la configuration',

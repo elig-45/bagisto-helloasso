@@ -54,15 +54,15 @@ class OrderController extends Controller
         $amount = isset($data['amount']) ? (int) round((float) $data['amount'] * 100) : null;
 
         try {
-            $status = $refunds->requestRefund($orderModel->id, $connection, $amount, $data['comment']);
+            $refunds->requestRefund($orderModel->id, $connection, $amount, $data['comment']);
 
             return redirect()->route('admin.sales.orders.view', $orderModel->id)
-                ->with('success', trans('helloasso::app.admin.refund-requested', ['status' => $status]));
+                ->with('success', trans('helloasso::app.admin.refund-requested'));
         } catch (\Throwable $exception) {
             report($exception);
 
             return redirect()->route('admin.sales.orders.view', $orderModel->id)
-                ->withErrors(['helloasso' => trans('helloasso::app.admin.refund-manual')]);
+                ->withErrors(['helloasso' => trans('helloasso::app.admin.refund-check-remote')]);
         }
     }
 
@@ -74,9 +74,14 @@ class OrderController extends Controller
 
         try {
             $status = $refunds->cancelFuturePayments($orderModel->id, $connection);
+            $message = match ($status) {
+                'remote_and_local_canceled' => trans('helloasso::app.admin.future-payments-and-order-canceled'),
+                'remote_canceled_local_action_failed' => trans('helloasso::app.admin.future-payments-canceled-review-order'),
+                default => trans('helloasso::app.admin.future-payments-canceled'),
+            };
 
             return redirect()->route('admin.sales.orders.view', $orderModel->id)
-                ->with('success', trans('helloasso::app.admin.future-payments-canceled', ['status' => $status]));
+                ->with('success', $message);
         } catch (\Throwable $exception) {
             report($exception);
 

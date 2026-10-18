@@ -16,7 +16,7 @@ class HelloAssoCheckoutService
 
     public function start(Connection $connection, object $cart, int $installmentCount = 1): CheckoutAttempt
     {
-        if (! $connection->organization_slug) {
+        if (! $connection->organization_slug || ! $connection->isProductionAllowed()) {
             throw new \RuntimeException('HelloAsso is not configured for this channel.');
         }
 

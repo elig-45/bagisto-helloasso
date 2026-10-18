@@ -28,6 +28,11 @@ class Connection extends Model
         return $this->environment !== 'production';
     }
 
+    public function isProductionAllowed(): bool
+    {
+        return $this->isSandbox() || (bool) config('helloasso.allow_production', true);
+    }
+
     public function apiBaseUrl(): string
     {
         return $this->isSandbox()

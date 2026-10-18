@@ -23,6 +23,7 @@ class HelloAssoPayment extends Payment
             && Connection::where('channel_code', $channelCode)
                 ->whereNotNull('organization_slug')
                 ->whereNotNull('client_id')
+                ->when(! config('helloasso.allow_production', true), fn ($query) => $query->where('environment', 'sandbox'))
                 ->where(function ($query) {
                     $query->where('environment', '!=', 'production')
                         ->orWhereNull('cash_in_eligible')

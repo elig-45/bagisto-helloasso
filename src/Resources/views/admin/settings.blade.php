@@ -125,6 +125,9 @@
                 <p>@lang('helloasso::app.admin.webhook-url') <code>{{ route('helloasso.payment.webhook', $connection->channel_code) }}</code></p>
                 <p class="mt-2">@lang('helloasso::app.admin.activation-location')</p>
                 <p class="mt-2">@lang('helloasso::app.admin.production-disabled-info')</p>
+                @if (! config('helloasso.allow_production', true))
+                    <p class="mt-2 font-medium text-amber-700 dark:text-amber-300">@lang('helloasso::app.admin.production-blocked-by-environment')</p>
+                @endif
                 <p class="mt-2">
                     @lang('helloasso::app.admin.cash-in-status')
                     @if ($connection->cash_in_eligible === true)

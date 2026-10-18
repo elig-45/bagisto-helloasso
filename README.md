@@ -79,6 +79,8 @@ Laravel découvre automatiquement le fournisseur de services du package. Dans l�
 
 Les réglages et les identifiants sont indépendants pour chaque canal Bagisto.
 
+Pour bloquer l’encaissement réel dans un environnement de recette, définissez `HELLOASSO_ALLOW_PRODUCTION=false`. Le mode sandbox reste disponible ; le contrôle est appliqué au checkout même si un administrateur choisit Production dans les réglages.
+
 ### Connexion de l’association
 
 Choisissez **Clé API de l’association**, puis définissez le mode, le slug de l’association, le Client ID et le Client Secret fournis par HelloAsso. Les secrets et jetons sont chiffrés en base. Le test confirme séparément l’accès API et l’éligibilité d’encaissement ; certains rôles HelloAsso ne donnent pas accès au champ d’éligibilité, qui est alors signalé comme inconnu. Un retour d’API qui refuse le Checkout reste déterminant.

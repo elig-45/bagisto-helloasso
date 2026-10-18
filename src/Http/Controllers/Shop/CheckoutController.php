@@ -47,6 +47,7 @@ class CheckoutController extends Controller
         abort_unless(
             (bool) core()->getConfigData('sales.payment_methods.helloasso.active')
                 && data_get($cart, 'payment.method') === 'helloasso'
+                && $connection->isProductionAllowed()
                 && ! ($connection->environment === 'production' && $connection->cash_in_eligible === false),
             403,
         );

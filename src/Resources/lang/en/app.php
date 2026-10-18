@@ -32,6 +32,7 @@ return [
         'connect-organization' => 'Connect an organization',
         'webhook-url' => 'Configure these HelloAsso notifications:',
         'production-disabled-info' => 'Use sandbox credentials for testing. Production checkout requires an organization allowed to receive payments.',
+        'production-blocked-by-environment' => 'This deployment blocks production payments, even if Production is selected here.',
         'activation-location' => 'Enable or disable this method in Configuration > Sales > Payment Methods; this channel setting is the only activation switch.',
         'cash-in-status' => 'Known cash-in eligibility:',
         'cash-in-eligible' => 'allowed',

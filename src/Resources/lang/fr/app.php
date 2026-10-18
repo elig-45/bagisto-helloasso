@@ -32,6 +32,7 @@ return [
         'connect-organization' => 'Connecter une association',
         'webhook-url' => 'Configurez ces notifications dans HelloAsso :',
         'production-disabled-info' => 'Utilisez les identifiants sandbox pour les essais. L’encaissement de production exige une association autorisée.',
+        'production-blocked-by-environment' => 'Ce déploiement interdit l’encaissement de production, même si le mode Production est sélectionné ici.',
         'activation-location' => 'Activez ou désactivez cette méthode dans Configuration > Ventes > Modes de paiement ; ce réglage par canal est l’unique interrupteur.',
         'cash-in-status' => 'Capacité d’encaissement connue :',
         'cash-in-eligible' => 'autorisée',

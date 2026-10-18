@@ -1,0 +1,25 @@
+{
+    "name": "elig45/bagisto-helloasso",
+    "description": "HelloAsso checkout payment method for Bagisto 2.4",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.3 || ^8.4",
+        "illuminate/support": "^12.0",
+        "illuminate/http": "^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Elig45\\BagistoHelloAsso\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Elig45\\BagistoHelloAsso\\Providers\\HelloAssoServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

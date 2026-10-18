@@ -1,7 +1,7 @@
 <a id="readme-top"></a>
 
 <div align="center">
-  <img src="src/Resources/assets/helloasso.svg" alt="HelloAsso" width="96" height="96">
+  <img src="https://upload.wikimedia.org/wikipedia/fr/2/27/Logo-HelloAsso.svg" alt="HelloAsso" width="96" height="96">
   <h1>Bagisto HelloAsso</h1>
   <p>Une intégration HelloAsso configurable par canal pour les commandes Bagisto.</p>
   <p>

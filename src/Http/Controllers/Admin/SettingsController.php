@@ -96,15 +96,42 @@ class SettingsController extends Controller
     }
 
     public function test(
+        Request $request,
+        HelloAssoApiClient $api,
+        OrganizationEligibilityService $eligibility,
+    ): RedirectResponse {
+        return $this->testConnection($request, $api, $eligibility);
+    }
+
+    public function testLegacy(
+        Request $request,
+        HelloAssoApiClient $api,
+        OrganizationEligibilityService $eligibility,
+        string $legacyChannel,
+    ): RedirectResponse {
+        // Configuration is global, so the channel segment is accepted only for old links.
+        return $this->testConnection($request, $api, $eligibility);
+    }
+
+    private function testConnection(
+        Request $request,
         HelloAssoApiClient $api,
         OrganizationEligibilityService $eligibility,
     ): RedirectResponse {
         $connection = Connection::globalConnection();
 
-        abort_unless($connection, 404);
+        $redirect = fn () => $request->isMethod('GET')
+            ? redirect()->route('admin.helloasso.settings')
+            : redirect()->back();
+
+        if (! $connection) {
+            return $redirect()->withErrors([
+                'connection' => trans('helloasso::app.admin.connection-required'),
+            ]);
+        }
 
         if (! $connection->organization_slug) {
-            return redirect()->back()->withErrors([
+            return $redirect()->withErrors([
                 'connection' => trans('helloasso::app.admin.organization-required'),
             ]);
         }
@@ -115,14 +142,14 @@ class SettingsController extends Controller
             $cashInEligible = $eligibility->recordApiResult($connection, $organization);
 
             if ($cashInEligible === false) {
-                return redirect()->back()->withErrors([
+                return $redirect()->withErrors([
                     'connection' => trans('helloasso::app.admin.connection-ineligible', [
                         'url' => 'https://admin.helloasso.com/'.$connection->organization_slug.'/verification',
                     ]),
                 ]);
             }
 
-            return redirect()->back()->with('success', trans(
+            return $redirect()->with('success', trans(
                 $cashInEligible === true
                     ? 'helloasso::app.admin.connection-ok'
                     : 'helloasso::app.admin.connection-eligibility-unknown'
@@ -130,7 +157,7 @@ class SettingsController extends Controller
         } catch (\Throwable $exception) {
             report($exception);
 
-            return redirect()->back()->withErrors(['connection' => trans('helloasso::app.admin.connection-failed')]);
+            return $redirect()->withErrors(['connection' => trans('helloasso::app.admin.connection-failed')]);
         }
     }
 

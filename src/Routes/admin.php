@@ -11,6 +11,8 @@ Route::middleware(['web', 'admin'])
             Route::get('settings', 'index')->name('admin.helloasso.settings');
             Route::post('settings', 'save')->name('admin.helloasso.save');
             Route::post('test', 'test')->name('admin.helloasso.test');
+            // Keep older channel-specific test links working with the global connection.
+            Route::get('test/{legacyChannel}', 'testLegacy')->name('admin.helloasso.test-legacy');
             Route::get('connect', 'connect')->name('admin.helloasso.connect');
             Route::get('callback', 'callback')->name('admin.helloasso.callback');
         });

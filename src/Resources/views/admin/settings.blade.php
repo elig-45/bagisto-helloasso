@@ -9,27 +9,27 @@
     @endphp
 
     @php
-        $helpTip = 'ml-1.5 inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-violet-400 text-[10px] font-bold leading-none text-violet-700 dark:border-violet-500 dark:text-violet-300';
+        $helpTip = 'ml-1.5 inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-violet-400 text-[10px] font-bold leading-none text-violet-700 dark:border-gray-600 dark:text-gray-200';
     @endphp
 
     <div class="flex flex-col gap-6">
         <header class="flex flex-wrap items-center justify-between gap-5 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
             <div class="flex min-w-0 items-center gap-4">
-                <span class="icon-payment flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-2xl text-violet-700 dark:bg-violet-950 dark:text-violet-300"></span>
+                <span class="icon-payment flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-2xl text-violet-700 dark:bg-gray-800 dark:text-gray-200"></span>
 
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-widest text-violet-700 dark:text-violet-300">HelloAsso</p>
+                    <p class="text-xs font-semibold uppercase tracking-widest text-violet-700 dark:text-gray-200">HelloAsso</p>
                     <h1 class="mt-1 text-xl font-bold text-gray-900 dark:text-white">@lang('helloasso::app.admin.title')</h1>
                 </div>
             </div>
 
-            <p class="rounded-full bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-800 dark:bg-violet-950 dark:text-violet-200">
+            <p class="rounded-full bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-800 dark:bg-gray-800 dark:text-gray-200">
                 @lang('helloasso::app.admin.global-settings')
             </p>
         </header>
 
         @if ($errors->any())
-            <div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+            <div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-gray-900 dark:text-red-200">
                 @foreach ($errors->all() as $error)
                     <p>{{ $error }}</p>
                 @endforeach
@@ -37,14 +37,14 @@
         @endif
 
         @if (session('success'))
-            <div role="status" class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
+            <div role="status" class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                 {{ session('success') }}
             </div>
         @endif
 
         <a
             href="{{ $paymentSettingsUrl }}"
-            class="flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900 transition hover:border-blue-300 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100 dark:hover:bg-blue-900 sm:flex-row sm:items-center sm:justify-between"
+            class="flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900 transition hover:border-blue-300 hover:bg-blue-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 sm:flex-row sm:items-center sm:justify-between"
         >
             <span class="flex items-start gap-3">
                 <span class="icon-info mt-0.5 shrink-0 text-lg"></span>
@@ -61,7 +61,7 @@
             <section class="grid gap-4 md:grid-cols-2">
                 <div class="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
                     <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">@lang('helloasso::app.admin.environment')</p>
-                    <p class="mt-2 inline-flex rounded-full px-3 py-1 text-sm font-semibold {{ $connection->isSandbox() ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200' : 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200' }}">
+                    <p class="mt-2 inline-flex rounded-full px-3 py-1 text-sm font-semibold {{ $connection->isSandbox() ? 'bg-amber-100 text-amber-800 dark:bg-gray-800 dark:text-gray-200' : 'bg-violet-100 text-violet-800 dark:bg-gray-800 dark:text-gray-200' }}">
                         @lang($connection->isSandbox() ? 'helloasso::app.admin.sandbox' : 'helloasso::app.admin.production')
                     </p>
 
@@ -70,7 +70,7 @@
                     @endif
 
                     @if (! config('helloasso.allow_production', true))
-                        <p class="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                        <p class="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-gray-900 dark:text-gray-200">
                             @lang('helloasso::app.admin.production-blocked-by-environment')
                         </p>
                     @endif

@@ -42,6 +42,7 @@ return [
         'cash-in-checked' => 'vérifiée le :date',
         'saved' => 'Configuration HelloAsso enregistrée.',
         'organization-required' => 'L’identifiant de l’association est requis avec une clé API d’association.',
+        'connection-required' => 'Configurez d’abord la connexion HelloAsso, puis relancez le test.',
         'connection-ok' => 'Connexion API réussie ; HelloAsso confirme que l’association peut encaisser.',
         'connection-eligibility-unknown' => 'Connexion API réussie. La capacité d’encaissement n’a pas pu être confirmée avec ces droits ; la réponse du Checkout reste déterminante.',
         'connection-ineligible' => 'Connexion API réussie, mais cette association ne peut pas encore encaisser. Terminez sa vérification ici :url',

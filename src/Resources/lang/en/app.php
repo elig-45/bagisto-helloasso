@@ -42,6 +42,7 @@ return [
         'cash-in-checked' => 'checked on :date',
         'saved' => 'HelloAsso settings saved.',
         'organization-required' => 'An organization slug is required for an association API key.',
+        'connection-required' => 'Configure the HelloAsso connection first, then run the test again.',
         'connection-ok' => 'API connection succeeded; HelloAsso confirms that the organization can receive payments.',
         'connection-eligibility-unknown' => 'API connection succeeded. Cash-in eligibility could not be confirmed with these permissions; the Checkout response remains authoritative.',
         'connection-ineligible' => 'API connection succeeded, but this organization cannot receive payments yet. Complete verification at :url',

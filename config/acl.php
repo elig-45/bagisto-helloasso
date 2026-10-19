@@ -8,6 +8,7 @@ return [
             'admin.helloasso.settings',
             'admin.helloasso.save',
             'admin.helloasso.test',
+            'admin.helloasso.test-legacy',
             'admin.helloasso.connect',
             'admin.helloasso.callback',
             'admin.helloasso.refund',

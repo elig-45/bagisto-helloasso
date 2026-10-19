@@ -2,13 +2,20 @@
 
 namespace Elig45\BagistoHelloAsso\Tests;
 
-use Orchestra\Testbench\TestCase as OrchestraTestCase;
+use Elig45\BagistoHelloAsso\Providers\HelloAssoServiceProvider;
+use Orchestra\Testbench\TestCase as OrchestraTestbenchCase;
 
-class TestCase extends OrchestraTestCase
+class TestCase extends OrchestraTestbenchCase
 {
+    protected function getPackageProviders($app): array
+    {
+        return [HelloAssoServiceProvider::class];
+    }
+
     protected function getEnvironmentSetUp($app): void
     {
         $app['config']->set('app.key', 'base64:'.base64_encode(str_repeat('a', 32)));
+        $app['config']->set('app.admin_url', 'admin');
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite', [
             'driver' => 'sqlite',

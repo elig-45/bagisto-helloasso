@@ -129,11 +129,22 @@ class CheckoutController extends Controller
                 ->with('error', trans('helloasso::app.checkout.verification-failed'));
         }
 
-        if ($attempt->fresh()->order_id) {
+        if (in_array($status, ['metadata_mismatch', 'amount_mismatch', 'invalid_attempt', 'snapshot_missing'], true)) {
+            return redirect()->route('shop.checkout.cart.index')
+                ->with('error', trans('helloasso::app.checkout.verification-failed'));
+        }
+
+        if (
+            $attempt->fresh()->order_id
+            && in_array($status, ['order_ready', 'order_pending_payment'], true)
+        ) {
             session()->flash('order_id', $attempt->fresh()->order_id);
         }
 
-        if ($attempt->fresh()->order_id) {
+        if (
+            $attempt->fresh()->order_id
+            && in_array($status, ['order_ready', 'order_pending_payment'], true)
+        ) {
             return redirect()->route('shop.checkout.onepage.success')
                 ->with(
                     $status === 'order_ready' ? 'success' : 'info',
@@ -301,14 +312,15 @@ class CheckoutController extends Controller
         }
 
         try {
-            $processed = Cache::lock('helloasso.webhook.'.$receipt->payload_hash, 600)->block(10, function () use ($attempt, $connection, $receipt, $paymentId) {
+            $trustedPaymentNotification = $eventType === 'Payment' && filled($connection->webhook_signature_key);
+            $processed = Cache::lock('helloasso.webhook.'.$receipt->payload_hash, 600)->block(10, function () use ($attempt, $connection, $receipt, $paymentId, $trustedPaymentNotification) {
                 $receipt->refresh();
 
                 if ($receipt->status === 'processed') {
                     return false;
                 }
 
-                $this->settlement->reconcile($attempt, $connection, $paymentId);
+                $this->settlement->reconcile($attempt, $connection, $paymentId, $trustedPaymentNotification);
 
                 $receipt->update(['status' => 'processed']);
 

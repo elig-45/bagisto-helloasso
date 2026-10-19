@@ -24,21 +24,34 @@ class OrderSettlementService
         protected OrderTransactionRepository $transactions,
     ) {}
 
-    public function reconcile(CheckoutAttempt $attempt, Connection $connection, ?int $notificationPaymentId = null): string
-    {
+    public function reconcile(
+        CheckoutAttempt $attempt,
+        Connection $connection,
+        ?int $notificationPaymentId = null,
+        bool $trustedPaymentNotification = false,
+    ): string {
         if (! $this->connectionMatchesAttempt($attempt, $connection) || ! $attempt->checkout_intent_id) {
             return 'invalid_attempt';
         }
 
-        return Cache::lock('helloasso.attempt.'.$attempt->id, 1200)->block(10, function () use ($attempt, $connection, $notificationPaymentId) {
+        return Cache::lock('helloasso.attempt.'.$attempt->id, 1200)->block(10, function () use (
+            $attempt,
+            $connection,
+            $notificationPaymentId,
+            $trustedPaymentNotification,
+        ) {
             $attempt->refresh();
 
-            return $this->reconcileLocked($attempt, $connection, $notificationPaymentId);
+            return $this->reconcileLocked($attempt, $connection, $notificationPaymentId, $trustedPaymentNotification);
         });
     }
 
-    protected function reconcileLocked(CheckoutAttempt $attempt, Connection $connection, ?int $notificationPaymentId = null): string
-    {
+    protected function reconcileLocked(
+        CheckoutAttempt $attempt,
+        Connection $connection,
+        ?int $notificationPaymentId = null,
+        bool $trustedPaymentNotification = false,
+    ): string {
         if (! $this->connectionMatchesAttempt($attempt, $connection) || ! $attempt->checkout_intent_id) {
             return 'invalid_attempt';
         }
@@ -73,8 +86,18 @@ class OrderSettlementService
 
             foreach ($paymentIds as $paymentId) {
                 $payment = $this->api->get($connection, '/payments/'.$paymentId);
+                $trustedAssociation = $trustedPaymentNotification || HelloAssoPayment::where('checkout_attempt_id', $attempt->id)
+                    ->where('payment_id', $paymentId)
+                    ->exists();
+                $paymentMatches = $this->paymentMatchesAttempt($attempt, $payment, false);
 
-                if (! $this->paymentMatchesAttempt($attempt, $payment)) {
+                if (! $paymentMatches || (! $trustedAssociation && ! isset($payment['checkoutIntentId']))) {
+                    if ($paymentMatches && ! $trustedAssociation && ! isset($payment['checkoutIntentId'])) {
+                        $attempt->update(['status' => 'pending', 'last_checked_at' => now()]);
+
+                        return 'pending';
+                    }
+
                     $attempt->update(['status' => 'metadata_mismatch', 'last_checked_at' => now()]);
 
                     return 'metadata_mismatch';
@@ -91,6 +114,7 @@ class OrderSettlementService
             if (
                 ! $this->orderTotalMatches($remoteOrder, $attempt->total_amount)
                 || (isset($remoteOrder['organizationSlug']) && $remoteOrder['organizationSlug'] !== $attempt->organization_slug)
+                || (isset($remoteOrder['checkoutIntentId']) && (int) $remoteOrder['checkoutIntentId'] !== (int) $attempt->checkout_intent_id)
                 || (isset($remoteOrder['currency']) && strtoupper((string) $remoteOrder['currency']) !== $attempt->currency)
             ) {
                 $attempt->update([
@@ -105,7 +129,7 @@ class OrderSettlementService
             $remotePayments = $this->fetchPayments($attempt, $connection, $remoteOrder);
 
             foreach ($remotePayments as $payment) {
-                if (! $this->paymentMatchesAttempt($attempt, $payment)) {
+                if (! $this->paymentMatchesAttempt($attempt, $payment, false)) {
                     $attempt->update(['status' => 'metadata_mismatch', 'last_checked_at' => now()]);
 
                     return 'metadata_mismatch';
@@ -293,8 +317,11 @@ class OrderSettlementService
         ];
     }
 
-    protected function paymentMatchesAttempt(CheckoutAttempt $attempt, array $payment): bool
-    {
+    protected function paymentMatchesAttempt(
+        CheckoutAttempt $attempt,
+        array $payment,
+        bool $requireCheckoutIntentId = true,
+    ): bool {
         $amount = (int) ($payment['amount'] ?? 0);
         $expectedAmounts = $attempt->installment_count > 1
             ? array_merge(
@@ -304,7 +331,8 @@ class OrderSettlementService
             : [(int) $attempt->total_amount];
 
         return (int) ($payment['id'] ?? 0) > 0
-            && (int) ($payment['checkoutIntentId'] ?? 0) === (int) $attempt->checkout_intent_id
+            && (! $requireCheckoutIntentId || isset($payment['checkoutIntentId']))
+            && (! isset($payment['checkoutIntentId']) || (int) $payment['checkoutIntentId'] === (int) $attempt->checkout_intent_id)
             && (! isset($payment['organizationSlug']) || $payment['organizationSlug'] === $attempt->organization_slug)
             && (! isset($payment['currency']) || strtoupper((string) $payment['currency']) === $attempt->currency)
             && $amount > 0

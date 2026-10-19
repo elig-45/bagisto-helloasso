@@ -41,7 +41,7 @@ class RefundSyncService
 
             if (
                 (int) ($remote['id'] ?? 0) !== (int) $localPayment->payment_id
-                || (int) ($remote['checkoutIntentId'] ?? 0) !== (int) $attempt->checkout_intent_id
+                || (isset($remote['checkoutIntentId']) && (int) $remote['checkoutIntentId'] !== (int) $attempt->checkout_intent_id)
                 || (isset($remote['organizationSlug']) && $remote['organizationSlug'] !== $attempt->organization_slug)
                 || (int) ($remote['amount'] ?? 0) !== (int) $localPayment->amount
             ) {
@@ -223,7 +223,7 @@ class RefundSyncService
 
             if (
                 (int) ($remote['id'] ?? 0) !== (int) $payment->payment_id
-                || (int) ($remote['checkoutIntentId'] ?? 0) !== (int) $attempt->checkout_intent_id
+                || (isset($remote['checkoutIntentId']) && (int) $remote['checkoutIntentId'] !== (int) $attempt->checkout_intent_id)
                 || (isset($remote['organizationSlug']) && $remote['organizationSlug'] !== $attempt->organization_slug)
                 || (isset($remote['currency']) && strtoupper((string) $remote['currency']) !== $attempt->currency)
                 || (int) ($remote['amount'] ?? 0) !== (int) $payment->amount

@@ -12,6 +12,7 @@ class CheckoutAttempt extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
+        'installment_plan' => 'array',
         'remote_order' => 'encrypted:array',
         'cart_snapshot' => 'encrypted:array',
         'last_checked_at' => 'immutable_datetime',

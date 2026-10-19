@@ -54,6 +54,10 @@ class CheckoutController extends Controller
 
         $count = (int) session()->pull('helloasso.installment_count.'.$cart->id, 1);
 
+        if ($count !== 1 && ! in_array($count, $connection->installment_counts ?? [], true)) {
+            $count = 1;
+        }
+
         try {
             $attempt = $this->checkout->start($connection, $cart, $count);
             session()->put('helloasso.attempt.'.$channelCode, $attempt->id);

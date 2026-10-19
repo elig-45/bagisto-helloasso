@@ -15,10 +15,17 @@ class SettingsController extends Controller
 {
     public function index(): View
     {
+        $channels = core()->getAllChannels();
+        $selectedChannel = request()->query('channel', core()->getCurrentChannelCode());
+
+        if (! $channels->contains('code', $selectedChannel)) {
+            $selectedChannel = $channels->first()?->code;
+        }
+
         return view('helloasso::admin.settings', [
-            'channels' => core()->getAllChannels(),
+            'channels' => $channels,
             'connections' => Connection::all()->keyBy('channel_code'),
-            'selectedChannel' => request()->query('channel', core()->getCurrentChannelCode()),
+            'selectedChannel' => $selectedChannel,
         ]);
     }
 

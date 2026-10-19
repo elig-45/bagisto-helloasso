@@ -26,7 +26,6 @@ class HelloAssoServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../../config/payment-methods.php', 'payment_methods');
         $this->mergeConfigFrom(__DIR__.'/../../config/helloasso.php', 'helloasso');
         $this->mergeConfigFrom(__DIR__.'/../../config/core.php', 'core');
-        $this->mergeConfigFrom(__DIR__.'/../../config/admin-menu.php', 'menu.admin');
         $this->mergeConfigFrom(__DIR__.'/../../config/acl.php', 'acl');
         $this->app->singleton(RefundSyncGuard::class);
     }

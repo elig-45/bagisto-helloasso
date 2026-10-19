@@ -40,6 +40,13 @@ return [
                 'channel_based' => true,
                 'locale_based' => false,
                 'default' => 10,
+            ], [
+                'name' => 'secure_connection',
+                'title' => 'helloasso::app.admin.title',
+                'type' => 'blade',
+                'path' => 'helloasso::admin.configuration-link',
+                'channel_based' => false,
+                'locale_based' => false,
             ],
         ],
     ],

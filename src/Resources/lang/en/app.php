@@ -2,9 +2,9 @@
 
 return [
     'admin' => [
-        'menu' => 'HelloAsso',
+        'menu' => 'HelloAsso connection',
         'payment-method' => 'HelloAsso',
-        'payment-method-info' => 'Accept secure payments through HelloAsso Checkout.',
+        'payment-method-info' => 'Set activation, checkout label, and sort order here. Open the secure HelloAsso settings for encrypted credentials and channel options.',
         'title' => 'HelloAsso settings',
         'environment' => 'Environment',
         'sandbox' => 'Sandbox',

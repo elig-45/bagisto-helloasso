@@ -2,9 +2,9 @@
 
 return [
     'admin' => [
-        'menu' => 'HelloAsso',
+        'menu' => 'Connexion HelloAsso',
         'payment-method' => 'HelloAsso',
-        'payment-method-info' => 'Acceptez les paiements sécurisés avec le Checkout HelloAsso.',
+        'payment-method-info' => 'Réglez ici l’activation, le libellé et l’ordre. Les identifiants chiffrés et options par canal sont accessibles depuis la configuration sécurisée HelloAsso.',
         'title' => 'Configuration HelloAsso',
         'environment' => 'Environnement',
         'sandbox' => 'Sandbox',

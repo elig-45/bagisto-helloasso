@@ -4,8 +4,9 @@ return [
     'admin' => [
         'menu' => 'Connexion HelloAsso',
         'payment-method' => 'HelloAsso',
-        'payment-method-info' => 'Réglez ici l’activation, le libellé et l’ordre. Les identifiants chiffrés et options par canal sont accessibles depuis la configuration sécurisée HelloAsso.',
+        'payment-method-info' => 'Réglez ici l’activation globale, le libellé et l’ordre. Les identifiants communs et les options de paiement sont dans la configuration sécurisée HelloAsso.',
         'title' => 'Configuration HelloAsso',
+        'global-settings' => 'Réglages communs à tous les canaux',
         'environment' => 'Environnement',
         'sandbox' => 'Sandbox',
         'production' => 'Production',
@@ -33,7 +34,7 @@ return [
         'webhook-url' => 'Configurez ces notifications dans HelloAsso :',
         'production-disabled-info' => 'Utilisez les identifiants sandbox pour les essais. L’encaissement de production exige une association autorisée.',
         'production-blocked-by-environment' => 'Ce déploiement interdit l’encaissement de production, même si le mode Production est sélectionné ici.',
-        'activation-location' => 'Activez ou désactivez cette méthode dans Configuration > Ventes > Modes de paiement ; ce réglage par canal est l’unique interrupteur.',
+        'activation-location' => 'Activez ou désactivez cette méthode pour tous les canaux dans Configuration > Ventes > Modes de paiement ; c’est l’unique interrupteur.',
         'cash-in-status' => 'Capacité d’encaissement connue :',
         'cash-in-eligible' => 'autorisée',
         'cash-in-ineligible' => 'non autorisée',
@@ -75,7 +76,7 @@ return [
     ],
     'checkout' => [
         'description' => 'Payez en toute sécurité avec HelloAsso.',
-        'unavailable' => 'Le paiement HelloAsso n’est pas disponible pour ce canal.',
+        'unavailable' => 'Le paiement HelloAsso n’est pas disponible pour cette boutique.',
         'cart-unavailable' => 'Votre panier n’est pas disponible pour le Checkout HelloAsso.',
         'start-failed' => 'Le Checkout HelloAsso n’a pas pu démarrer. Réessayez.',
         'invalid-return' => 'Le retour HelloAsso n’a pas pu être vérifié.',

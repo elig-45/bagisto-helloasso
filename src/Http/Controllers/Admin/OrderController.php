@@ -23,8 +23,8 @@ class OrderController extends Controller
     ): RedirectResponse {
         $orderModel = $this->orders->findOrFail($order);
         abort_unless($orderModel->payment?->method === 'helloasso', 404);
-        $channelCode = $orderModel->channel?->code;
-        $connection = Connection::where('channel_code', $channelCode)->firstOrFail();
+        $connection = Connection::globalConnection();
+        abort_unless($connection, 404);
 
         try {
             $attempt = CheckoutAttempt::where('order_id', $orderModel->id)->firstOrFail();
@@ -51,7 +51,8 @@ class OrderController extends Controller
             'comment' => ['required', 'string', 'max:500'],
         ]);
 
-        $connection = Connection::where('channel_code', $orderModel->channel?->code)->firstOrFail();
+        $connection = Connection::globalConnection();
+        abort_unless($connection, 404);
         $amount = isset($data['amount']) ? (int) round((float) $data['amount'] * 100) : null;
 
         try {
@@ -74,7 +75,8 @@ class OrderController extends Controller
     {
         $orderModel = $this->orders->findOrFail($order);
         abort_unless($orderModel->payment?->method === 'helloasso', 404);
-        $connection = Connection::where('channel_code', $orderModel->channel?->code)->firstOrFail();
+        $connection = Connection::globalConnection();
+        abort_unless($connection, 404);
 
         try {
             $status = $refunds->cancelFuturePayments($orderModel->id, $connection);

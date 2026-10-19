@@ -11,6 +11,10 @@ Route::middleware('web')->prefix('helloasso')->group(function () {
     Route::get('{channel}/error', [CheckoutController::class, 'error'])->name('helloasso.payment.error');
 });
 
-Route::post('helloasso/{channel}/webhook', [CheckoutController::class, 'webhook'])
+Route::post('helloasso/webhook', [CheckoutController::class, 'webhook'])
     ->middleware('throttle:120,1')
     ->name('helloasso.payment.webhook');
+
+Route::post('helloasso/{channel}/webhook', [CheckoutController::class, 'webhook'])
+    ->middleware('throttle:120,1')
+    ->name('helloasso.payment.webhook.legacy');

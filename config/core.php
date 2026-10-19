@@ -11,7 +11,7 @@ return [
                 'name' => 'active',
                 'title' => 'admin::app.configuration.index.sales.payment-methods.status',
                 'type' => 'boolean',
-                'channel_based' => true,
+                'channel_based' => false,
                 'locale_based' => false,
                 'default' => 0,
             ], [
@@ -20,7 +20,7 @@ return [
                 'type' => 'text',
                 'depends' => 'active:1',
                 'validation' => 'required_if:active,1',
-                'channel_based' => true,
+                'channel_based' => false,
                 'locale_based' => true,
                 'default' => 'HelloAsso',
             ], [
@@ -28,7 +28,7 @@ return [
                 'title' => 'admin::app.configuration.index.sales.payment-methods.description',
                 'type' => 'textarea',
                 'depends' => 'active:1',
-                'channel_based' => true,
+                'channel_based' => false,
                 'locale_based' => true,
                 'default' => 'Paiement sécurisé avec HelloAsso.',
             ], [
@@ -37,7 +37,7 @@ return [
                 'type' => 'number',
                 'depends' => 'active:1',
                 'validation' => 'required_if:active,1|integer|min:1',
-                'channel_based' => true,
+                'channel_based' => false,
                 'locale_based' => false,
                 'default' => 10,
             ], [

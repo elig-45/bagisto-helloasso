@@ -1,5 +1,5 @@
 @php
-    $installmentCounts = \Elig45\BagistoHelloAsso\Models\Connection::where('channel_code', core()->getCurrentChannelCode())->first()?->installment_counts ?? [];
+    $installmentCounts = \Elig45\BagistoHelloAsso\Models\Connection::globalConnection()?->installment_counts ?? [];
 @endphp
 
 @if (count($installmentCounts))

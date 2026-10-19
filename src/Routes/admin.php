@@ -10,9 +10,9 @@ Route::middleware(['web', 'admin'])
         Route::controller(SettingsController::class)->prefix('helloasso')->group(function () {
             Route::get('settings', 'index')->name('admin.helloasso.settings');
             Route::post('settings', 'save')->name('admin.helloasso.save');
-            Route::post('test/{channel}', 'test')->name('admin.helloasso.test');
-            Route::get('connect/{channel}', 'connect')->name('admin.helloasso.connect');
-            Route::get('callback/{channel}', 'callback')->name('admin.helloasso.callback');
+            Route::post('test', 'test')->name('admin.helloasso.test');
+            Route::get('connect', 'connect')->name('admin.helloasso.connect');
+            Route::get('callback', 'callback')->name('admin.helloasso.callback');
         });
 
         Route::controller(OrderController::class)->prefix('helloasso/orders')->group(function () {

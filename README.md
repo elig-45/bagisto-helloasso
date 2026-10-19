@@ -3,7 +3,7 @@
 <div align="center">
   <img src="https://upload.wikimedia.org/wikipedia/fr/2/27/Logo-HelloAsso.svg" alt="HelloAsso" width="220">
   <h1>Bagisto HelloAsso</h1>
-  <p>Une intégration HelloAsso configurable par canal pour les commandes Bagisto.</p>
+  <p>Une intégration HelloAsso à configuration globale pour les commandes Bagisto.</p>
   <p>
     <a href="https://github.com/elig-45/bagisto-helloasso/issues/new?template=bug_report.yml">Signaler un problème</a>
     ·
@@ -33,7 +33,7 @@
 
 ## À propos
 
-Bagisto HelloAsso ajoute HelloAsso Checkout aux moyens de paiement de [Bagisto](https://bagisto.com/). Le package utilise le client HTTP Laravel, sans SDK HelloAsso supplémentaire. Chaque canal dispose de sa propre connexion et de ses propres réglages.
+Bagisto HelloAsso ajoute HelloAsso Checkout aux moyens de paiement de [Bagisto](https://bagisto.com/). Le package utilise le client HTTP Laravel, sans SDK HelloAsso supplémentaire. Une seule connexion et une seule configuration de paiement s’appliquent à tous les canaux de la boutique ; les commandes conservent leur canal d’origine pour le retour de paiement et le rapprochement.
 
 Fonctionnalités principales :
 
@@ -73,21 +73,21 @@ php artisan vendor:publish --tag=helloasso-assets --force
 php artisan optimize:clear
 ```
 
-Laravel découvre automatiquement le fournisseur de services du package. Dans l’administration, ouvrez **Configuration → Ventes → Moyens de paiement → HelloAsso**. Activez la méthode dans cette fiche ; le bouton **Configuration HelloAsso** ouvre les identifiants et options avancées du canal. Les secrets restent dans le stockage chiffré du package au lieu du stockage générique de configuration de Bagisto.
+Laravel découvre automatiquement le fournisseur de services du package. Dans l’administration, ouvrez **Configuration → Ventes → Moyens de paiement → HelloAsso**. L’activation est globale ; le bouton **Configuration HelloAsso** ouvre les identifiants et options partagés par tous les canaux. Les secrets restent dans le stockage chiffré du package au lieu du stockage générique de configuration de Bagisto.
 
 ## Configuration
 
-Les réglages et les identifiants sont indépendants pour chaque canal Bagisto.
+La connexion HelloAsso, les moyens de paiement proposés et les échéanciers sont configurés une seule fois et s’appliquent à tous les canaux Bagisto.
 
 Pour bloquer l’encaissement réel dans un environnement de recette, définissez `HELLOASSO_ALLOW_PRODUCTION=false`. Le mode sandbox reste disponible ; le contrôle est appliqué au checkout même si un administrateur choisit Production dans les réglages.
 
 ### Connexion de l’association
 
-Choisissez **Clé API de l’association**, puis définissez le mode, le slug de l’association, le Client ID et le Client Secret fournis par HelloAsso. Les secrets et jetons sont chiffrés en base. Le test confirme séparément l’accès API et l’éligibilité d’encaissement ; certains rôles HelloAsso ne donnent pas accès au champ d’éligibilité, qui est alors signalé comme inconnu. Un retour d’API qui refuse le Checkout reste déterminant.
+Choisissez **Clé API de l’association**, puis définissez le mode, le slug de l’association, le Client ID et le Client Secret fournis par HelloAsso. Cette connexion sert tous les canaux de la boutique. Les secrets et jetons sont chiffrés en base. Le test confirme séparément l’accès API et l’éligibilité d’encaissement ; certains rôles HelloAsso ne donnent pas accès au champ d’éligibilité, qui est alors signalé comme inconnu. Un retour d’API qui refuse le Checkout reste déterminant.
 
 ### Connexion partenaire
 
-Choisissez **OAuth partenaire**, saisissez les identifiants du client partenaire puis utilisez **Connecter une association**. Le domaine de la boutique et son URL HTTPS de rappel doivent être autorisés dans le client API HelloAsso. L’association sélectionnée pendant OAuth est liée au canal.
+Choisissez **OAuth partenaire**, saisissez les identifiants du client partenaire puis utilisez **Connecter une association**. Le domaine de la boutique et son URL HTTPS de rappel doivent être autorisés dans le client API HelloAsso. L’association sélectionnée pendant OAuth sert tous les canaux.
 
 ### Moyens de paiement et échéanciers
 
@@ -101,7 +101,7 @@ Les montants sont calculés à partir du total du panier et transmis à HelloAss
 
 ## Paiement et rapprochement
 
-Dans les réglages du canal, copiez l’URL de notification affichée vers HelloAsso et activez les événements `Order`, `Payment` et `Organization` si votre compte les propose. Le dernier événement actualise l’éligibilité connue de l’association. Pour une connexion partenaire, ajoutez la clé de signature de notification afin de vérifier les notifications HMAC-SHA256.
+Dans les réglages globaux, copiez l’URL de notification affichée vers HelloAsso et activez les événements `Order`, `Payment` et `Organization` si votre compte les propose. Le dernier événement actualise l’éligibilité connue de l’association. Pour une connexion partenaire, ajoutez la clé de signature de notification afin de vérifier les notifications HMAC-SHA256.
 
 Ajoutez le planificateur Laravel à la configuration de la boutique :
 
@@ -116,7 +116,7 @@ php artisan helloasso:reconcile --limit=100
 php artisan helloasso:refresh-tokens
 ```
 
-Un retour navigateur ne confirme jamais un paiement à lui seul. Au retour client, à la réception des notifications et lors du rapprochement, le package vérifie l’état auprès de l’API HelloAsso avant de créer ou modifier la commande. Les contrôles incluent le canal, l’association, la devise, le montant et l’intention de paiement.
+Un retour navigateur ne confirme jamais un paiement à lui seul. Au retour client, à la réception des notifications et lors du rapprochement, le package vérifie l’état auprès de l’API HelloAsso avant de créer ou modifier la commande. Les contrôles incluent le canal d’origine de la commande, l’association, la devise, le montant et l’intention de paiement.
 
 ## Remboursements et annulations
 

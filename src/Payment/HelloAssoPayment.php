@@ -16,20 +16,14 @@ class HelloAssoPayment extends Payment
 
     public function isAvailable(): bool
     {
-        $channelCode = core()->getCurrentChannelCode();
+        $connection = Connection::globalConnection();
 
         return parent::isAvailable()
-            && $channelCode
-            && Connection::where('channel_code', $channelCode)
-                ->whereNotNull('organization_slug')
-                ->whereNotNull('client_id')
-                ->when(! config('helloasso.allow_production', true), fn ($query) => $query->where('environment', 'sandbox'))
-                ->where(function ($query) {
-                    $query->where('environment', '!=', 'production')
-                        ->orWhereNull('cash_in_eligible')
-                        ->orWhere('cash_in_eligible', true);
-                })
-                ->exists();
+            && $connection
+            && $connection->organization_slug
+            && $connection->client_id
+            && $connection->isProductionAllowed()
+            && ! ($connection->environment === 'production' && $connection->cash_in_eligible === false);
     }
 
     public function getTitle(): string

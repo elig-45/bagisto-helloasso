@@ -4,8 +4,9 @@ return [
     'admin' => [
         'menu' => 'HelloAsso connection',
         'payment-method' => 'HelloAsso',
-        'payment-method-info' => 'Set activation, checkout label, and sort order here. Open the secure HelloAsso settings for encrypted credentials and channel options.',
+        'payment-method-info' => 'Set the global activation, checkout label, and sort order here. Open the secure HelloAsso settings for the shared credentials and payment options.',
         'title' => 'HelloAsso settings',
+        'global-settings' => 'Shared by all channels',
         'environment' => 'Environment',
         'sandbox' => 'Sandbox',
         'production' => 'Production',
@@ -33,7 +34,7 @@ return [
         'webhook-url' => 'Configure these HelloAsso notifications:',
         'production-disabled-info' => 'Use sandbox credentials for testing. Production checkout requires an organization allowed to receive payments.',
         'production-blocked-by-environment' => 'This deployment blocks production payments, even if Production is selected here.',
-        'activation-location' => 'Enable or disable this method in Configuration > Sales > Payment Methods; this channel setting is the only activation switch.',
+        'activation-location' => 'Enable or disable this method globally in Configuration > Sales > Payment Methods; this is the only activation switch.',
         'cash-in-status' => 'Known cash-in eligibility:',
         'cash-in-eligible' => 'allowed',
         'cash-in-ineligible' => 'not allowed',
@@ -75,7 +76,7 @@ return [
     ],
     'checkout' => [
         'description' => 'Pay securely with HelloAsso.',
-        'unavailable' => 'HelloAsso payment is not available for this channel.',
+        'unavailable' => 'HelloAsso payment is not available for this store.',
         'cart-unavailable' => 'Your cart is not available for HelloAsso Checkout.',
         'start-failed' => 'HelloAsso Checkout could not be started. Please try again.',
         'invalid-return' => 'The HelloAsso return could not be verified.',

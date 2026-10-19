@@ -14,7 +14,7 @@ class PartnerAuthorizationService
         $state = Str::random(48);
         $challenge = $this->base64Url(hash('sha256', $verifier, true));
 
-        session()->put('helloasso.oauth.'.$connection->channel_code, [
+        session()->put('helloasso.oauth.'.Connection::GLOBAL_KEY, [
             'verifier' => $verifier,
             'state' => $state,
             'redirect_uri' => $redirectUri,

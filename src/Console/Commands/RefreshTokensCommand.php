@@ -14,14 +14,18 @@ class RefreshTokensCommand extends Command
 
     public function handle(AccessTokenService $tokens): int
     {
-        foreach (Connection::whereNotNull('refresh_token')->get() as $connection) {
-            try {
-                $connection->forceFill(['token_expires_at' => now()->subMinute()])->save();
-                $tokens->token($connection);
-            } catch (\Throwable $exception) {
-                report($exception);
-                $this->warn('A HelloAsso token could not be refreshed.');
-            }
+        $connection = Connection::globalConnection();
+
+        if (! $connection || ! $connection->refresh_token) {
+            return self::SUCCESS;
+        }
+
+        try {
+            $connection->forceFill(['token_expires_at' => now()->subMinute()])->save();
+            $tokens->token($connection);
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->warn('A HelloAsso token could not be refreshed.');
         }
 
         return self::SUCCESS;

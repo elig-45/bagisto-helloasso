@@ -37,7 +37,7 @@ class CheckoutController extends Controller
                 ->with('error', trans('helloasso::app.checkout.cart-unavailable'));
         }
 
-        $connection = Connection::where('channel_code', $channelCode)->first();
+        $connection = Connection::globalConnection();
 
         if (! $connection || ! $connection->organization_slug) {
             return redirect()->route('shop.checkout.cart.index')
@@ -59,7 +59,7 @@ class CheckoutController extends Controller
         }
 
         try {
-            $attempt = $this->checkout->start($connection, $cart, $count);
+            $attempt = $this->checkout->start($connection, $cart, $channelCode, $count);
             session()->put('helloasso.attempt.'.$channelCode, $attempt->id);
 
             return redirect()->away($attempt->redirect_url);
@@ -73,12 +73,13 @@ class CheckoutController extends Controller
 
     public function selectPlan(Request $request, string $channel): JsonResponse
     {
-        $connection = Connection::where('channel_code', $channel)->firstOrFail();
+        $connection = Connection::globalConnection();
         $cart = Cart::getCart();
 
         abort_unless(
-            $cart
-            && core()->getCurrentChannelCode() === $connection->channel_code,
+            $connection
+            && $cart
+            && core()->getCurrentChannelCode() === $channel,
             403,
         );
 
@@ -97,7 +98,7 @@ class CheckoutController extends Controller
 
     public function returned(Request $request, string $channel): RedirectResponse
     {
-        $connection = Connection::where('channel_code', $channel)->first();
+        $connection = Connection::globalConnection();
         $intentId = $request->query('checkoutIntentId');
 
         if (! $connection || ! ctype_digit((string) $intentId)) {
@@ -170,11 +171,11 @@ class CheckoutController extends Controller
 
     public function webhook(
         Request $request,
-        string $channel,
         WebhookSignatureVerifier $signatures,
         OrganizationEligibilityService $eligibility,
+        ?string $channel = null,
     ): JsonResponse {
-        $connection = Connection::where('channel_code', $channel)->first();
+        $connection = Connection::globalConnection();
 
         if (! $connection) {
             return response()->json(['status' => 'unknown_channel'], 404);
@@ -204,11 +205,11 @@ class CheckoutController extends Controller
             return response()->json(['status' => 'ignored']);
         }
 
-        $payloadHash = hash('sha256', $channel."\0".$body);
+        $payloadHash = hash('sha256', $body);
         $receipt = WebhookReceipt::firstOrCreate([
             'payload_hash' => $payloadHash,
         ], [
-            'channel_code' => $channel,
+            'channel_code' => $channel ?? Connection::GLOBAL_KEY,
             'event_type' => $eventType,
             'status' => 'received',
         ]);
@@ -266,9 +267,9 @@ class CheckoutController extends Controller
             return response()->json(['status' => 'checkout_not_found']);
         }
 
-        $attempt = CheckoutAttempt::where('channel_code', $channel)
-            ->where('organization_slug', $connection->organization_slug)
+        $attempt = CheckoutAttempt::where('organization_slug', $connection->organization_slug)
             ->where('checkout_intent_id', $intentId)
+            ->when($channel, fn ($query) => $query->where('channel_code', $channel))
             ->first();
 
         if (! $attempt) {

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 
 it('authenticates with association credentials and stores encrypted rotating tokens', function () {
     $connection = Connection::create([
-        'channel_code' => 'mejf',
+        'channel_code' => Connection::GLOBAL_KEY,
         'environment' => 'sandbox',
         'auth_mode' => 'association',
         'organization_slug' => 'mejf-test',
@@ -42,7 +42,7 @@ it('authenticates with association credentials and stores encrypted rotating tok
 
 it('refreshes a token after an unauthorized response and retries once', function () {
     $connection = Connection::create([
-        'channel_code' => 'betar',
+        'channel_code' => Connection::GLOBAL_KEY,
         'environment' => 'sandbox',
         'auth_mode' => 'association',
         'organization_slug' => 'betar-test',
@@ -84,7 +84,7 @@ it('refreshes a token after an unauthorized response and retries once', function
 
 it('preserves HelloAsso API failures as failed requests', function () {
     $connection = Connection::create([
-        'channel_code' => 'mejf',
+        'channel_code' => Connection::GLOBAL_KEY,
         'environment' => 'sandbox',
         'auth_mode' => 'association',
         'organization_slug' => 'mejf-test',
@@ -105,7 +105,7 @@ it('preserves HelloAsso API failures as failed requests', function () {
 
 it('preserves validation messages returned in the HelloAsso errors array', function () {
     $connection = Connection::create([
-        'channel_code' => 'mejf',
+        'channel_code' => Connection::GLOBAL_KEY,
         'environment' => 'sandbox',
         'auth_mode' => 'association',
         'organization_slug' => 'mejf-test',

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Connection extends Model
 {
+    public const GLOBAL_KEY = 'global';
+
     protected $table = 'helloasso_connections';
 
     protected $guarded = ['id'];
@@ -22,6 +24,11 @@ class Connection extends Model
         'token_expires_at' => 'immutable_datetime',
         'cash_in_checked_at' => 'immutable_datetime',
     ];
+
+    public static function globalConnection(): ?self
+    {
+        return static::where('channel_code', self::GLOBAL_KEY)->first();
+    }
 
     public function isSandbox(): bool
     {

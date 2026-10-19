@@ -16,6 +16,12 @@ class ReconcileCommand extends Command
 
     public function handle(OrderSettlementService $settlement, RefundSyncService $refunds): int
     {
+        $connection = Connection::globalConnection();
+
+        if (! $connection) {
+            return self::SUCCESS;
+        }
+
         $attempts = CheckoutAttempt::where(function ($query) {
             $query->where(function ($query) {
                 $query->whereNotIn('status', ['paid', 'abandoned', 'canceled', 'metadata_mismatch', 'amount_mismatch'])
@@ -35,12 +41,6 @@ class ReconcileCommand extends Command
             ->get();
 
         foreach ($attempts as $attempt) {
-            $connection = Connection::where('channel_code', $attempt->channel_code)->first();
-
-            if (! $connection) {
-                continue;
-            }
-
             try {
                 if ($attempt->created_at->lt(now()->subMinutes(45)) && ! $attempt->order_id && ! $attempt->remote_order_id) {
                     $attempt->update(['status' => 'abandoned', 'cart_snapshot' => null]);

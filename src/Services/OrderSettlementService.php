@@ -27,8 +27,7 @@ class OrderSettlementService
     public function reconcile(CheckoutAttempt $attempt, Connection $connection): string
     {
         if (
-            $attempt->channel_code !== $connection->channel_code
-            || $attempt->organization_slug !== $connection->organization_slug
+            $attempt->organization_slug !== $connection->organization_slug
             || ! $attempt->checkout_intent_id
         ) {
             return 'invalid_attempt';
@@ -44,8 +43,7 @@ class OrderSettlementService
     protected function reconcileLocked(CheckoutAttempt $attempt, Connection $connection): string
     {
         if (
-            $attempt->channel_code !== $connection->channel_code
-            || $attempt->organization_slug !== $connection->organization_slug
+            $attempt->organization_slug !== $connection->organization_slug
             || ! $attempt->checkout_intent_id
         ) {
             return 'invalid_attempt';

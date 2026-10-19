@@ -27,5 +27,8 @@ class TestCase extends OrchestraTestCase
 
         $migration = require dirname(__DIR__).'/src/Database/Migrations/2026_10_18_000002_update_helloasso_connection_activation_and_eligibility.php';
         $migration->up();
+
+        $migration = require dirname(__DIR__).'/src/Database/Migrations/2026_10_19_000001_make_helloasso_configuration_global.php';
+        $migration->up();
     }
 }

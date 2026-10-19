@@ -14,10 +14,10 @@ class HelloAssoCheckoutService
         protected InstallmentPlanBuilder $plans,
     ) {}
 
-    public function start(Connection $connection, object $cart, int $installmentCount = 1): CheckoutAttempt
+    public function start(Connection $connection, object $cart, string $channelCode, int $installmentCount = 1): CheckoutAttempt
     {
         if (! $connection->organization_slug || ! $connection->isProductionAllowed()) {
-            throw new \RuntimeException('HelloAsso is not configured for this channel.');
+            throw new \RuntimeException('HelloAsso is not configured globally.');
         }
 
         if (strtoupper((string) $cart->cart_currency_code) !== 'EUR') {
@@ -31,7 +31,7 @@ class HelloAssoCheckoutService
         }
 
         $existing = CheckoutAttempt::where('cart_id', $cart->id)
-            ->where('channel_code', $connection->channel_code)
+            ->where('channel_code', $channelCode)
             ->whereIn('status', ['redirected', 'pending', 'partially_paid'])
             ->where('created_at', '>=', now()->subMinutes(15))
             ->latest('id')
@@ -51,15 +51,15 @@ class HelloAssoCheckoutService
             'totalAmount' => $amount,
             'initialAmount' => $amount,
             'itemName' => mb_substr('Commande boutique '.$cart->id, 0, 250),
-            'backUrl' => route('helloasso.payment.cancel', ['channel' => $connection->channel_code]),
-            'errorUrl' => route('helloasso.payment.error', ['channel' => $connection->channel_code]),
-            'returnUrl' => route('helloasso.payment.return', ['channel' => $connection->channel_code]),
+            'backUrl' => route('helloasso.payment.cancel', ['channel' => $channelCode]),
+            'errorUrl' => route('helloasso.payment.error', ['channel' => $channelCode]),
+            'returnUrl' => route('helloasso.payment.return', ['channel' => $channelCode]),
             'containsDonation' => false,
             'payer' => $this->payer($cart),
             'metadata' => [
                 'bagisto_ref' => $reference,
                 'cart_id' => (string) $cart->id,
-                'channel_code' => $connection->channel_code,
+                'channel_code' => $channelCode,
                 'organization_slug' => $connection->organization_slug,
                 'currency' => 'EUR',
             ],
@@ -106,7 +106,7 @@ class HelloAssoCheckoutService
 
         return CheckoutAttempt::create([
             'cart_id' => $cart->id,
-            'channel_code' => $connection->channel_code,
+            'channel_code' => $channelCode,
             'organization_slug' => $connection->organization_slug,
             'checkout_intent_id' => (int) ($response['id'] ?? 0),
             'reference' => $reference,

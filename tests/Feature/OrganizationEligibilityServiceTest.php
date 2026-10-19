@@ -5,7 +5,7 @@ use Elig45\BagistoHelloAsso\Services\OrganizationEligibilityService;
 
 it('stores explicit eligibility from the organization API response', function () {
     $connection = Connection::create([
-        'channel_code' => 'mejf',
+        'channel_code' => Connection::GLOBAL_KEY,
         'environment' => 'production',
         'auth_mode' => 'association',
         'organization_slug' => 'mejf',
@@ -24,7 +24,7 @@ it('stores explicit eligibility from the organization API response', function ()
 
 it('leaves eligibility unknown when the API omits the restricted field', function () {
     $connection = Connection::create([
-        'channel_code' => 'betar',
+        'channel_code' => Connection::GLOBAL_KEY,
         'environment' => 'production',
         'auth_mode' => 'association',
         'organization_slug' => 'betar',
@@ -40,7 +40,7 @@ it('leaves eligibility unknown when the API omits the restricted field', functio
 
 it('applies a cash-in notification only to the configured organization and boolean state', function () {
     $connection = Connection::create([
-        'channel_code' => 'mejf',
+        'channel_code' => Connection::GLOBAL_KEY,
         'environment' => 'production',
         'auth_mode' => 'partner',
         'organization_slug' => 'mejf',

@@ -4,7 +4,7 @@
     </div>
 
     <a
-        href="{{ route('admin.helloasso.settings', ['channel' => core()->getRequestedChannelCode()]) }}"
+        href="{{ route('admin.helloasso.settings') }}"
         class="primary-button px-4 py-2"
     >
         @lang('helloasso::app.admin.title')

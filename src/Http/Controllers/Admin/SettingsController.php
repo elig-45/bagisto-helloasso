@@ -15,24 +15,14 @@ class SettingsController extends Controller
 {
     public function index(): View
     {
-        $channels = core()->getAllChannels();
-        $selectedChannel = request()->query('channel', core()->getCurrentChannelCode());
-
-        if (! $channels->contains('code', $selectedChannel)) {
-            $selectedChannel = $channels->first()?->code;
-        }
-
         return view('helloasso::admin.settings', [
-            'channels' => $channels,
-            'connections' => Connection::all()->keyBy('channel_code'),
-            'selectedChannel' => $selectedChannel,
+            'connection' => Connection::globalConnection(),
         ]);
     }
 
     public function save(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'channel_code' => ['required', 'string', 'max:50'],
             'environment' => ['required', 'in:sandbox,production'],
             'auth_mode' => ['required', 'in:association,partner'],
             'organization_slug' => ['nullable', 'string', 'max:150', 'regex:/^[a-z0-9-]+$/'],
@@ -56,9 +46,7 @@ class SettingsController extends Controller
                 ->withInput();
         }
 
-        abort_unless(core()->getAllChannels()->contains('code', $data['channel_code']), 404);
-
-        $connection = Connection::firstOrNew(['channel_code' => $data['channel_code']]);
+        $connection = Connection::firstOrNew(['channel_code' => Connection::GLOBAL_KEY]);
         if (! $connection->exists && blank($data['client_secret'])) {
             return redirect()->back()
                 ->withErrors(['client_secret' => trans('helloasso::app.admin.secret-required')])
@@ -103,16 +91,17 @@ class SettingsController extends Controller
 
         $connection->save();
 
-        return redirect()->route('admin.helloasso.settings', ['channel' => $connection->channel_code])
+        return redirect()->route('admin.helloasso.settings')
             ->with('success', trans('helloasso::app.admin.saved'));
     }
 
     public function test(
-        string $channel,
         HelloAssoApiClient $api,
         OrganizationEligibilityService $eligibility,
     ): RedirectResponse {
-        $connection = Connection::where('channel_code', $channel)->firstOrFail();
+        $connection = Connection::globalConnection();
+
+        abort_unless($connection, 404);
 
         if (! $connection->organization_slug) {
             return redirect()->back()->withErrors([
@@ -145,28 +134,33 @@ class SettingsController extends Controller
         }
     }
 
-    public function connect(string $channel, PartnerAuthorizationService $oauth): RedirectResponse
+    public function connect(PartnerAuthorizationService $oauth): RedirectResponse
     {
-        $connection = Connection::where('channel_code', $channel)->firstOrFail();
+        $connection = Connection::globalConnection();
+
+        abort_unless($connection, 404);
         abort_unless($connection->auth_mode === 'partner', 404);
 
-        $redirectUri = route('admin.helloasso.callback', ['channel' => $channel]);
+        $redirectUri = route('admin.helloasso.callback');
         abort_unless(str_starts_with($redirectUri, 'https://'), 400, trans('helloasso::app.admin.https-required'));
 
         return redirect()->away($oauth->authorizationUrl($connection, $redirectUri));
     }
 
-    public function callback(string $channel, Request $request, PartnerAuthorizationService $oauth): RedirectResponse
+    public function callback(Request $request, PartnerAuthorizationService $oauth): RedirectResponse
     {
-        $connection = Connection::where('channel_code', $channel)->firstOrFail();
-        $state = session()->pull('helloasso.oauth.'.$channel);
+        $connection = Connection::globalConnection();
+
+        abort_unless($connection, 404);
+
+        $state = session()->pull('helloasso.oauth.'.Connection::GLOBAL_KEY);
 
         if (
             ! $state
             || ! hash_equals((string) $state['state'], (string) $request->query('state'))
             || ! $request->query('code')
         ) {
-            return redirect()->route('admin.helloasso.settings', ['channel' => $channel])
+            return redirect()->route('admin.helloasso.settings')
                 ->withErrors(['connection' => trans('helloasso::app.admin.oauth-failed')]);
         }
 
@@ -175,11 +169,11 @@ class SettingsController extends Controller
         } catch (\Throwable $exception) {
             report($exception);
 
-            return redirect()->route('admin.helloasso.settings', ['channel' => $channel])
+            return redirect()->route('admin.helloasso.settings')
                 ->withErrors(['connection' => trans('helloasso::app.admin.oauth-failed')]);
         }
 
-        return redirect()->route('admin.helloasso.settings', ['channel' => $channel])
+        return redirect()->route('admin.helloasso.settings')
             ->with('success', trans('helloasso::app.admin.organization-connected'));
     }
 }

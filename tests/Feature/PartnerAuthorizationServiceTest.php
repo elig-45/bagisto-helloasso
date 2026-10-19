@@ -7,17 +7,17 @@ use Illuminate\Support\Facades\Http;
 
 it('uses PKCE state for partner authorization and saves the selected organization', function () {
     $connection = Connection::create([
-        'channel_code' => 'mejf',
+        'channel_code' => Connection::GLOBAL_KEY,
         'environment' => 'sandbox',
         'auth_mode' => 'partner',
         'client_id' => 'partner-client',
         'client_secret' => 'partner-secret',
     ]);
     $service = new PartnerAuthorizationService;
-    $redirectUri = 'https://shop.example.test/admin/helloasso/callback/mejf';
+    $redirectUri = 'https://shop.example.test/admin/helloasso/callback';
     $authorizationUrl = $service->authorizationUrl($connection, $redirectUri);
     parse_str((string) parse_url($authorizationUrl, PHP_URL_QUERY), $query);
-    $state = session()->get('helloasso.oauth.mejf');
+    $state = session()->get('helloasso.oauth.'.Connection::GLOBAL_KEY);
     $expectedChallenge = rtrim(strtr(base64_encode(hash('sha256', $state['verifier'], true)), '+/', '-_'), '=');
 
     expect($query['state'])->toBe($state['state'])

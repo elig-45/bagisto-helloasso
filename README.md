@@ -73,7 +73,7 @@ php artisan vendor:publish --tag=helloasso-assets --force
 php artisan optimize:clear
 ```
 
-Laravel découvre automatiquement le fournisseur de services du package. Dans l’administration, ouvrez **HelloAsso** pour configurer la connexion du canal. Activez ensuite la méthode une seule fois dans **Configuration → Ventes → Moyens de paiement** ; c’est l’interrupteur d’activation unique de Bagisto.
+Laravel découvre automatiquement le fournisseur de services du package. Dans l’administration, ouvrez **Configuration → Ventes → Moyens de paiement → HelloAsso**. Activez la méthode dans cette fiche ; le bouton **Configuration HelloAsso** ouvre les identifiants et options avancées du canal. Les secrets restent dans le stockage chiffré du package au lieu du stockage générique de configuration de Bagisto.
 
 ## Configuration
 

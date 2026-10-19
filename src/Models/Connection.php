@@ -37,7 +37,15 @@ class Connection extends Model
 
     public function isProductionAllowed(): bool
     {
-        return $this->isSandbox() || (bool) config('helloasso.allow_production', true);
+        return $this->isSandbox() || (bool) config('helloasso.allow_production', false);
+    }
+
+    public function canManageAttempt(CheckoutAttempt $attempt): bool
+    {
+        return $this->isProductionAllowed()
+            && $this->environment === $attempt->environment
+            && $this->auth_mode === $attempt->auth_mode
+            && hash_equals((string) $this->organization_slug, (string) $attempt->organization_slug);
     }
 
     public function apiBaseUrl(): string

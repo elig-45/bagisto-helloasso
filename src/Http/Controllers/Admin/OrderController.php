@@ -26,6 +26,7 @@ class OrderController extends Controller
 
         try {
             $attempt = CheckoutAttempt::where('order_id', $order->id)->firstOrFail();
+            abort_unless($connection->canManageAttempt($attempt), 409);
             $settlement->reconcile($attempt, $connection);
             $refundCount = $refunds->syncOrder($order->id, $connection);
 
@@ -60,6 +61,8 @@ class OrderController extends Controller
 
         $connection = Connection::globalConnection();
         abort_unless($connection, 404);
+        $attempt = CheckoutAttempt::where('order_id', $order->id)->firstOrFail();
+        abort_unless($connection->canManageAttempt($attempt), 409);
         $amount = isset($data['amount']) ? (int) round((float) $data['amount'] * 100) : null;
 
         if (isset($data['refund'])) {
@@ -75,6 +78,13 @@ class OrderController extends Controller
             } catch (\Throwable $exception) {
                 return redirect()->route('admin.sales.orders.view', $order->id)
                     ->withErrors(['helloasso' => $exception->getMessage()]);
+            }
+
+            $orderItemIds = $order->items->pluck('id')->map(fn ($id) => (string) $id)->all();
+
+            if (array_diff(array_map('strval', array_keys($refundData['items'])), $orderItemIds)) {
+                return redirect()->route('admin.sales.orders.view', $order->id)
+                    ->withErrors(['helloasso' => trans('admin::app.sales.refunds.create.invalid-qty')]);
             }
 
             $baseAmount = (float) ($summary['grand_total']['price'] ?? 0);
@@ -96,7 +106,7 @@ class OrderController extends Controller
         }
 
         try {
-            $refunds->requestRefund($order->id, $connection, $amount, $data['comment']);
+            $refunds->requestRefund($order->id, $connection, $amount, $data['comment'], $data['refund'] ?? null);
 
             return redirect()->route('admin.sales.orders.view', $order->id)
                 ->with('success', trans('helloasso::app.admin.refund-requested'));
@@ -116,6 +126,8 @@ class OrderController extends Controller
         abort_unless($order->payment?->method === 'helloasso', 404);
         $connection = Connection::globalConnection();
         abort_unless($connection, 404);
+        $attempt = CheckoutAttempt::where('order_id', $order->id)->firstOrFail();
+        abort_unless($connection->canManageAttempt($attempt), 409);
 
         try {
             $status = $refunds->cancelFuturePayments($order->id, $connection);

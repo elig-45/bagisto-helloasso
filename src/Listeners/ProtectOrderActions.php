@@ -3,6 +3,7 @@
 namespace Elig45\BagistoHelloAsso\Listeners;
 
 use Elig45\BagistoHelloAsso\Exceptions\ProtectedOrderAction;
+use Elig45\BagistoHelloAsso\Models\CheckoutAttempt;
 use Elig45\BagistoHelloAsso\Services\RefundSyncGuard;
 use Webkul\Sales\Models\Order;
 use Webkul\Sales\Repositories\OrderRepository;
@@ -63,6 +64,27 @@ class ProtectOrderActions
             $order->payment?->method === 'helloasso'
             && ! $this->guard->isAllowed()
         ) {
+            throw new ProtectedOrderAction((int) $order->id);
+        }
+    }
+
+    public function beforeShipment(mixed ...$payload): void
+    {
+        $orderId = $this->findOrderId($payload);
+
+        if (! $orderId) {
+            return;
+        }
+
+        $order = $this->orders->find($orderId);
+
+        if ($order?->payment?->method !== 'helloasso') {
+            return;
+        }
+
+        $attempt = CheckoutAttempt::where('order_id', $orderId)->first();
+
+        if (! $attempt || ! $attempt->fulfillment_ready) {
             throw new ProtectedOrderAction((int) $order->id);
         }
     }

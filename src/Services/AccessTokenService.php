@@ -17,7 +17,7 @@ class AccessTokenService
             return $connection->access_token;
         }
 
-        return Cache::lock('helloasso.token.'.$connection->id, 15)->block(10, function () use ($connection) {
+        return Cache::lock('helloasso.token.'.$connection->id, 45)->block(10, function () use ($connection) {
             $connection->refresh();
 
             if (

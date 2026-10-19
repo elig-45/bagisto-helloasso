@@ -101,7 +101,11 @@ class CheckoutController extends Controller
         $connection = Connection::globalConnection();
         $intentId = $request->query('checkoutIntentId');
 
-        if (! $connection || ! ctype_digit((string) $intentId)) {
+        if (
+            ! $connection
+            || core()->getCurrentChannelCode() !== $channelCode
+            || ! ctype_digit((string) $intentId)
+        ) {
             return redirect()->route('shop.checkout.cart.index')
                 ->with('error', trans('helloasso::app.checkout.invalid-return'));
         }
@@ -259,7 +263,25 @@ class CheckoutController extends Controller
             }
         }
 
-        $intentId = $this->findIntentId($payload['data'] ?? []);
+        $eventData = (array) ($payload['data'] ?? []);
+        $intentId = $this->findIntentId($eventData);
+        $paymentId = $eventType === 'Payment' ? $this->findPaymentId($eventData) : null;
+
+        if (! $paymentId && $eventType === 'Payment' && isset($eventData['id']) && ctype_digit((string) $eventData['id'])) {
+            $paymentId = (int) $eventData['id'];
+        }
+
+        if (! $intentId && $paymentId) {
+            try {
+                $payment = $this->api->get($connection, '/payments/'.$paymentId);
+                $intentId = (int) ($payment['checkoutIntentId'] ?? 0) ?: null;
+            } catch (\Throwable $exception) {
+                report($exception);
+                $receipt->update(['status' => 'failed']);
+
+                return response()->json(['status' => 'retry'], 500);
+            }
+        }
 
         if (! $intentId) {
             $receipt->update(['status' => 'ignored']);
@@ -279,14 +301,14 @@ class CheckoutController extends Controller
         }
 
         try {
-            $processed = Cache::lock('helloasso.webhook.'.$receipt->payload_hash, 600)->block(10, function () use ($attempt, $connection, $receipt) {
+            $processed = Cache::lock('helloasso.webhook.'.$receipt->payload_hash, 600)->block(10, function () use ($attempt, $connection, $receipt, $paymentId) {
                 $receipt->refresh();
 
                 if ($receipt->status === 'processed') {
                     return false;
                 }
 
-                $this->settlement->reconcile($attempt, $connection);
+                $this->settlement->reconcile($attempt, $connection, $paymentId);
 
                 $receipt->update(['status' => 'processed']);
 
@@ -314,6 +336,25 @@ class CheckoutController extends Controller
             }
 
             if (is_array($value) && ($found = $this->findIntentId($value))) {
+                return $found;
+            }
+        }
+
+        return null;
+    }
+
+    protected function findPaymentId(array $data): ?int
+    {
+        foreach ($data as $key => $value) {
+            if (
+                in_array($key, ['paymentId', 'payment_id'], true)
+                && ctype_digit((string) $value)
+                && (int) $value > 0
+            ) {
+                return (int) $value;
+            }
+
+            if (is_array($value) && ($found = $this->findPaymentId($value))) {
                 return $found;
             }
         }

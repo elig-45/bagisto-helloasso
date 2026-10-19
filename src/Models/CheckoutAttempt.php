@@ -15,6 +15,8 @@ class CheckoutAttempt extends Model
         'installment_plan' => 'array',
         'remote_order' => 'encrypted:array',
         'cart_snapshot' => 'encrypted:array',
+        'fulfillment_ready' => 'boolean',
+        'future_payments_canceled' => 'boolean',
         'last_checked_at' => 'immutable_datetime',
     ];
 

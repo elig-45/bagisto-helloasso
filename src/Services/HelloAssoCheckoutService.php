@@ -30,19 +30,29 @@ class HelloAssoCheckoutService
             throw new \RuntimeException('HelloAsso Checkout requires a positive amount of at least one euro.');
         }
 
+        $snapshot = (new OrderResource($cart))->jsonSerialize();
+        $fingerprint = hash('sha256', json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+
         $existing = CheckoutAttempt::where('cart_id', $cart->id)
             ->where('channel_code', $channelCode)
-            ->whereIn('status', ['redirected', 'pending', 'partially_paid'])
-            ->where('created_at', '>=', now()->subMinutes(15))
+            ->whereNull('order_id')
+            ->whereNotIn('status', ['paid', 'canceled', 'abandoned', 'metadata_mismatch', 'amount_mismatch'])
             ->latest('id')
             ->first();
 
         if ($existing) {
-            if ((int) $existing->installment_count === $installmentCount && (int) $existing->total_amount === $amount) {
+            if (
+                (int) $existing->installment_count === $installmentCount
+                && (int) $existing->total_amount === $amount
+                && hash_equals((string) $existing->cart_fingerprint, $fingerprint)
+                && $existing->environment === $connection->environment
+                && $existing->auth_mode === $connection->auth_mode
+                && $existing->organization_slug === $connection->organization_slug
+            ) {
                 return $existing;
             }
 
-            throw new \RuntimeException('A HelloAsso Checkout is already open for this cart.');
+            throw new \RuntimeException('An unresolved HelloAsso Checkout already exists for this cart.');
         }
 
         $reference = (string) Str::uuid();
@@ -108,6 +118,9 @@ class HelloAssoCheckoutService
             'cart_id' => $cart->id,
             'channel_code' => $channelCode,
             'organization_slug' => $connection->organization_slug,
+            'environment' => $connection->environment,
+            'auth_mode' => $connection->auth_mode,
+            'cart_fingerprint' => $fingerprint,
             'checkout_intent_id' => (int) ($response['id'] ?? 0),
             'reference' => $reference,
             'installment_plan' => $plan,
@@ -116,7 +129,7 @@ class HelloAssoCheckoutService
             'installment_count' => $installmentCount,
             'status' => 'redirected',
             'redirect_url' => $redirectUrl,
-            'cart_snapshot' => (new OrderResource($cart))->jsonSerialize(),
+            'cart_snapshot' => $snapshot,
         ]);
     }
 

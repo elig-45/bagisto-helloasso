@@ -42,13 +42,7 @@ class ReconcileCommand extends Command
 
         foreach ($attempts as $attempt) {
             try {
-                if ($attempt->created_at->lt(now()->subMinutes(45)) && ! $attempt->order_id && ! $attempt->remote_order_id) {
-                    $attempt->update(['status' => 'abandoned', 'cart_snapshot' => null]);
-
-                    continue;
-                }
-
-                if (! in_array($attempt->status, ['paid', 'canceled', 'abandoned', 'metadata_mismatch', 'amount_mismatch'], true)) {
+                if (! in_array($attempt->status, ['paid', 'canceled', 'metadata_mismatch', 'amount_mismatch'], true)) {
                     $settlement->reconcile($attempt, $connection);
                 }
 

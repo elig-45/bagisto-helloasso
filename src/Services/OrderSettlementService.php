@@ -24,28 +24,22 @@ class OrderSettlementService
         protected OrderTransactionRepository $transactions,
     ) {}
 
-    public function reconcile(CheckoutAttempt $attempt, Connection $connection): string
+    public function reconcile(CheckoutAttempt $attempt, Connection $connection, ?int $notificationPaymentId = null): string
     {
-        if (
-            $attempt->organization_slug !== $connection->organization_slug
-            || ! $attempt->checkout_intent_id
-        ) {
+        if (! $this->connectionMatchesAttempt($attempt, $connection) || ! $attempt->checkout_intent_id) {
             return 'invalid_attempt';
         }
 
-        return Cache::lock('helloasso.attempt.'.$attempt->id, 600)->block(10, function () use ($attempt, $connection) {
+        return Cache::lock('helloasso.attempt.'.$attempt->id, 1200)->block(10, function () use ($attempt, $connection, $notificationPaymentId) {
             $attempt->refresh();
 
-            return $this->reconcileLocked($attempt, $connection);
+            return $this->reconcileLocked($attempt, $connection, $notificationPaymentId);
         });
     }
 
-    protected function reconcileLocked(CheckoutAttempt $attempt, Connection $connection): string
+    protected function reconcileLocked(CheckoutAttempt $attempt, Connection $connection, ?int $notificationPaymentId = null): string
     {
-        if (
-            $attempt->organization_slug !== $connection->organization_slug
-            || ! $attempt->checkout_intent_id
-        ) {
+        if (! $this->connectionMatchesAttempt($attempt, $connection) || ! $attempt->checkout_intent_id) {
             return 'invalid_attempt';
         }
 
@@ -63,26 +57,61 @@ class OrderSettlementService
         $remoteOrder = $intent['order'] ?? null;
 
         if (! is_array($remoteOrder)) {
-            $attempt->update(['status' => 'pending', 'last_checked_at' => now()]);
+            $paymentIds = $notificationPaymentId
+                ? [$notificationPaymentId]
+                : ($attempt->order_id
+                    ? HelloAssoPayment::where('checkout_attempt_id', $attempt->id)->pluck('payment_id')->map(fn ($id) => (int) $id)->all()
+                    : []);
 
-            return 'pending';
+            if (! $paymentIds) {
+                $attempt->update(['status' => 'pending', 'last_checked_at' => now()]);
+
+                return 'pending';
+            }
+
+            $remotePayments = [];
+
+            foreach ($paymentIds as $paymentId) {
+                $payment = $this->api->get($connection, '/payments/'.$paymentId);
+
+                if (! $this->paymentMatchesAttempt($attempt, $payment)) {
+                    $attempt->update(['status' => 'metadata_mismatch', 'last_checked_at' => now()]);
+
+                    return 'metadata_mismatch';
+                }
+
+                $remotePayments[] = $this->normalizePayment($payment, $paymentId);
+            }
+
+            $remoteOrder = [
+                'amount' => ['total' => $attempt->total_amount],
+                'payments' => $remotePayments,
+            ];
+        } else {
+            if (
+                ! $this->orderTotalMatches($remoteOrder, $attempt->total_amount)
+                || (isset($remoteOrder['organizationSlug']) && $remoteOrder['organizationSlug'] !== $attempt->organization_slug)
+                || (isset($remoteOrder['currency']) && strtoupper((string) $remoteOrder['currency']) !== $attempt->currency)
+            ) {
+                $attempt->update([
+                    'status' => 'amount_mismatch',
+                    'remote_order' => $this->safeOrderData($remoteOrder),
+                    'last_checked_at' => now(),
+                ]);
+
+                return 'amount_mismatch';
+            }
+
+            $remotePayments = $this->fetchPayments($attempt, $connection, $remoteOrder);
+
+            foreach ($remotePayments as $payment) {
+                if (! $this->paymentMatchesAttempt($attempt, $payment)) {
+                    $attempt->update(['status' => 'metadata_mismatch', 'last_checked_at' => now()]);
+
+                    return 'metadata_mismatch';
+                }
+            }
         }
-
-        if (
-            ! $this->orderTotalMatches($remoteOrder, $attempt->total_amount)
-            || (isset($remoteOrder['organizationSlug']) && $remoteOrder['organizationSlug'] !== $attempt->organization_slug)
-            || (isset($remoteOrder['currency']) && strtoupper((string) $remoteOrder['currency']) !== $attempt->currency)
-        ) {
-            $attempt->update([
-                'status' => 'amount_mismatch',
-                'remote_order' => $this->safeOrderData($remoteOrder),
-                'last_checked_at' => now(),
-            ]);
-
-            return 'amount_mismatch';
-        }
-
-        $remotePayments = $this->fetchPayments($attempt, $connection, $remoteOrder);
         $authorized = collect($remotePayments)->filter(fn (array $payment) => $this->isAuthorized($payment['state'], $connection))->values();
         $authorizedCents = (int) $authorized->sum('amount');
         $hasAuthorized = $authorized->isNotEmpty();
@@ -101,7 +130,7 @@ class OrderSettlementService
         $policy = $connection->order_policy;
         $createOrder = $this->shouldCreateOrder($policy, $hasAuthorized, $fullyPaid, $hasPendingSepaPayment);
 
-        if (! $createOrder) {
+        if (! $createOrder && ! $attempt->order_id) {
             return $hasAuthorized ? 'payment_recorded' : 'pending';
         }
 
@@ -144,6 +173,13 @@ class OrderSettlementService
             $attempt->update([
                 'order_id' => $order->id,
                 'status' => $fullyPaid ? 'paid' : ($authorizedCents > 0 ? 'partially_paid' : 'pending'),
+                'fulfillment_ready' => $this->isOrderReady(
+                    $connection,
+                    $attempt,
+                    $remotePayments,
+                    $authorizedCents,
+                    $fullyPaid,
+                ),
                 'cart_snapshot' => null,
             ]);
 
@@ -194,10 +230,19 @@ class OrderSettlementService
                 $fullyPaid,
             );
 
-            $this->orders->updateOrderStatus(
-                $order,
-                $ready ? Order::STATUS_PROCESSING : Order::STATUS_PENDING_PAYMENT,
-            );
+            if ($ready && $order->status === Order::STATUS_PENDING_PAYMENT) {
+                $this->orders->updateOrderStatus($order, Order::STATUS_PROCESSING);
+            }
+
+            if (! $ready && ! in_array($order->status, [
+                Order::STATUS_PROCESSING,
+                Order::STATUS_COMPLETED,
+                Order::STATUS_CLOSED,
+                Order::STATUS_CANCELED,
+                Order::STATUS_FRAUD,
+            ], true)) {
+                $this->orders->updateOrderStatus($order, Order::STATUS_PENDING_PAYMENT);
+            }
 
             return $ready ? 'order_ready' : 'order_pending_payment';
         });
@@ -225,20 +270,45 @@ class OrderSettlementService
 
         foreach ($ids as $id) {
             $payment = $this->api->get($connection, '/payments/'.$id);
-
-            $payments[] = [
-                'id' => (int) ($payment['id'] ?? $id),
-                'amount' => (int) ($payment['amount'] ?? 0),
-                'state' => (string) ($payment['state'] ?? 'Unknown'),
-                'paymentMeans' => $payment['paymentMeans'] ?? null,
-                'installmentNumber' => $payment['installmentNumber'] ?? null,
-                'refundOperations' => $payment['refundOperations'] ?? [],
-                'paymentReceiptUrl' => $payment['paymentReceiptUrl'] ?? null,
-                'date' => $payment['date'] ?? null,
-            ];
+            $payments[] = $this->normalizePayment($payment, $id);
         }
 
         return $payments;
+    }
+
+    protected function normalizePayment(array $payment, int $fallbackId): array
+    {
+        return [
+            'id' => (int) ($payment['id'] ?? $fallbackId),
+            'amount' => (int) ($payment['amount'] ?? 0),
+            'state' => (string) ($payment['state'] ?? 'Unknown'),
+            'paymentMeans' => $payment['paymentMeans'] ?? null,
+            'installmentNumber' => $payment['installmentNumber'] ?? null,
+            'refundOperations' => $payment['refundOperations'] ?? [],
+            'paymentReceiptUrl' => $payment['paymentReceiptUrl'] ?? null,
+            'date' => $payment['date'] ?? null,
+            'checkoutIntentId' => $payment['checkoutIntentId'] ?? null,
+            'organizationSlug' => $payment['organizationSlug'] ?? null,
+            'currency' => $payment['currency'] ?? null,
+        ];
+    }
+
+    protected function paymentMatchesAttempt(CheckoutAttempt $attempt, array $payment): bool
+    {
+        $amount = (int) ($payment['amount'] ?? 0);
+        $expectedAmounts = $attempt->installment_count > 1
+            ? array_merge(
+                [(int) data_get($attempt->installment_plan, 'initialAmount', 0)],
+                array_map(fn ($term) => (int) ($term['amount'] ?? 0), (array) data_get($attempt->installment_plan, 'terms', [])),
+            )
+            : [(int) $attempt->total_amount];
+
+        return (int) ($payment['id'] ?? 0) > 0
+            && (int) ($payment['checkoutIntentId'] ?? 0) === (int) $attempt->checkout_intent_id
+            && (! isset($payment['organizationSlug']) || $payment['organizationSlug'] === $attempt->organization_slug)
+            && (! isset($payment['currency']) || strtoupper((string) $payment['currency']) === $attempt->currency)
+            && $amount > 0
+            && in_array($amount, $expectedAmounts, true);
     }
 
     protected function saveTransaction(int $orderId, int $invoiceId, HelloAssoPayment $payment): void
@@ -389,5 +459,10 @@ class OrderSettlementService
             'formType' => $order['formType'] ?? null,
             'date' => $order['date'] ?? null,
         ], fn ($value) => $value !== null);
+    }
+
+    protected function connectionMatchesAttempt(CheckoutAttempt $attempt, Connection $connection): bool
+    {
+        return $connection->canManageAttempt($attempt);
     }
 }

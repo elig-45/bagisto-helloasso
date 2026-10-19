@@ -6,7 +6,7 @@
         </button>
     </form>
 
-    @if ($attempt?->installment_count > 1 && $attempt?->remote_order_id)
+    @if ($attempt?->installment_count > 1 && $attempt?->remote_order_id && ! $attempt?->future_payments_canceled)
         <form method="POST" action="{{ route('admin.helloasso.cancel-future-payments', $order->id) }}" onsubmit="return confirm(@js(trans('helloasso::app.admin.confirm-cancel-future-payments')))" class="ml-auto">
             @csrf
             <button class="secondary-button px-3 py-1.5" type="submit">

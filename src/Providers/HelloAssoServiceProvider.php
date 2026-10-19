@@ -45,6 +45,7 @@ class HelloAssoServiceProvider extends ServiceProvider
         Event::listen('bagisto.admin.sales.order.page_action.after', OrderActionsListener::class);
         Event::listen('sales.refund.save.before', [ProtectOrderActions::class, 'beforeRefund']);
         Event::listen('sales.order.cancel.before', [ProtectOrderActions::class, 'beforeCancel']);
+        Event::listen('sales.shipment.save.before', [ProtectOrderActions::class, 'beforeShipment']);
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {
             $schedule->command('helloasso:reconcile')->everyFiveMinutes()->withoutOverlapping();

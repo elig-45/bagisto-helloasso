@@ -53,6 +53,7 @@ return [
         'sync-payment' => 'Synchroniser les paiements HelloAsso',
         'refund-amount' => 'Montant à rembourser (EUR ; vide pour toutes les échéances payées)',
         'refund-comment' => 'Motif du remboursement',
+        'refund-comment-help' => 'Bagisto ne crée l’avoir qu’après confirmation du remboursement par HelloAsso.',
         'request-refund' => 'Demander le remboursement distant',
         'refund-requested' => 'Demande de remboursement envoyée à HelloAsso. Son statut distant sera synchronisé avant la mise à jour de Bagisto.',
         'refund-manual' => 'Aucun remboursement local n’a été enregistré. Vérifiez HelloAsso puis synchronisez la commande.',

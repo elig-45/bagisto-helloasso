@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Sales\Models\Order;
+use Webkul\Sales\Repositories\RefundRepository;
 
 class OrderController extends Controller
 {
@@ -38,18 +39,61 @@ class OrderController extends Controller
         }
     }
 
-    public function refund(Request $request, Order $order, RefundSyncService $refunds): RedirectResponse
-    {
+    public function refund(
+        Request $request,
+        Order $order,
+        RefundSyncService $refunds,
+        RefundRepository $refundRepository,
+    ): RedirectResponse {
         abort_unless($order->payment?->method === 'helloasso', 404);
 
         $data = $request->validate([
             'amount' => ['nullable', 'numeric', 'min:0.01', 'max:'.(float) $order->grand_total],
             'comment' => ['required', 'string', 'max:500'],
+            'refund' => ['sometimes', 'array'],
+            'refund.items' => ['sometimes', 'array'],
+            'refund.items.*' => ['required', 'numeric', 'min:0'],
+            'refund.shipping' => ['sometimes', 'numeric', 'min:0', 'max:'.max(0, (float) $order->base_shipping_invoiced - (float) $order->base_shipping_refunded)],
+            'refund.adjustment_refund' => ['sometimes', 'numeric', 'min:0'],
+            'refund.adjustment_fee' => ['sometimes', 'numeric', 'min:0'],
         ]);
 
         $connection = Connection::globalConnection();
         abort_unless($connection, 404);
         $amount = isset($data['amount']) ? (int) round((float) $data['amount'] * 100) : null;
+
+        if (isset($data['refund'])) {
+            $refundData = array_replace([
+                'items' => [],
+                'shipping' => 0,
+                'adjustment_refund' => 0,
+                'adjustment_fee' => 0,
+            ], $data['refund']);
+
+            try {
+                $summary = $refundRepository->getOrderItemsRefundSummary($refundData, $order->id);
+            } catch (\Throwable $exception) {
+                return redirect()->route('admin.sales.orders.view', $order->id)
+                    ->withErrors(['helloasso' => $exception->getMessage()]);
+            }
+
+            $baseAmount = (float) ($summary['grand_total']['price'] ?? 0);
+            $maxRefundAmount = max(0, (float) $order->base_grand_total_invoiced - (float) $order->base_grand_total_refunded);
+
+            if ($baseAmount <= 0) {
+                return redirect()->route('admin.sales.orders.view', $order->id)
+                    ->withErrors(['helloasso' => trans('admin::app.sales.refunds.create.invalid-refund-amount-error')]);
+            }
+
+            if ($baseAmount > $maxRefundAmount + 0.005) {
+                return redirect()->route('admin.sales.orders.view', $order->id)
+                    ->withErrors(['helloasso' => trans('admin::app.sales.refunds.create.refund-limit-error', [
+                        'amount' => core()->formatBasePrice($maxRefundAmount),
+                    ])]);
+            }
+
+            $amount = (int) round(core()->convertPrice($baseAmount, $order->order_currency_code) * 100);
+        }
 
         try {
             $refunds->requestRefund($order->id, $connection, $amount, $data['comment']);

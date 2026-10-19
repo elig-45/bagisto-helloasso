@@ -53,6 +53,7 @@ return [
         'sync-payment' => 'Synchronize HelloAsso payments',
         'refund-amount' => 'Refund amount (EUR; leave blank for all paid installments)',
         'refund-comment' => 'Refund reason',
+        'refund-comment-help' => 'Bagisto creates the credit memo only after HelloAsso confirms the refund.',
         'request-refund' => 'Request remote refund',
         'refund-requested' => 'HelloAsso refund request submitted. Its remote status will be synchronized before updating Bagisto.',
         'refund-manual' => 'No local refund was recorded. Check the HelloAsso back office, then synchronize the order.',

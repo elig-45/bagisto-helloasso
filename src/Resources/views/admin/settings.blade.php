@@ -10,6 +10,10 @@
         ]);
     @endphp
 
+    @php
+        $helpTip = 'ml-1.5 inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-violet-400 text-[10px] font-bold leading-none text-violet-700 dark:border-violet-500 dark:text-violet-300';
+    @endphp
+
     <div class="flex flex-col gap-6">
         <header class="flex flex-wrap items-center justify-between gap-5 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
             <div class="flex min-w-0 items-center gap-4">
@@ -127,7 +131,10 @@
 
                 <div class="grid gap-x-6 gap-y-5 md:grid-cols-2">
                     <div>
-                        <label for="helloasso-environment" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-200">@lang('helloasso::app.admin.environment')</label>
+                        <label for="helloasso-environment" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                            @lang('helloasso::app.admin.environment')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.environment')" aria-label="@lang('helloasso::help.environment')">i</span>
+                        </label>
                         <select id="helloasso-environment" name="environment" required class="custom-select w-full rounded-md border-gray-300 bg-white px-3 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white">
                             <option value="sandbox" @selected(old('environment', $connection?->environment ?? 'sandbox') === 'sandbox')>@lang('helloasso::app.admin.sandbox')</option>
                             <option value="production" @selected(old('environment', $connection?->environment) === 'production')>@lang('helloasso::app.admin.production')</option>
@@ -135,7 +142,10 @@
                     </div>
 
                     <div>
-                        <label for="helloasso-auth-mode" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-200">@lang('helloasso::app.admin.authentication')</label>
+                        <label for="helloasso-auth-mode" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                            @lang('helloasso::app.admin.authentication')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.auth-mode')" aria-label="@lang('helloasso::help.auth-mode')">i</span>
+                        </label>
                         <select id="helloasso-auth-mode" name="auth_mode" required class="custom-select w-full rounded-md border-gray-300 bg-white px-3 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white">
                             <option value="association" @selected(old('auth_mode', $connection?->auth_mode ?? 'association') === 'association')>@lang('helloasso::app.admin.association-key')</option>
                             <option value="partner" @selected(old('auth_mode', $connection?->auth_mode) === 'partner')>@lang('helloasso::app.admin.partner-oauth')</option>
@@ -145,6 +155,7 @@
                     <x-admin::form.control-group class="!mb-0">
                         <x-admin::form.control-group.label for="helloasso-organization-slug">
                             @lang('helloasso::app.admin.organization-slug')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.organization-slug')" aria-label="@lang('helloasso::help.organization-slug')">i</span>
                         </x-admin::form.control-group.label>
 
                         <x-admin::form.control-group.control
@@ -163,6 +174,7 @@
                     <x-admin::form.control-group class="!mb-0">
                         <x-admin::form.control-group.label class="required" for="helloasso-client-id">
                             @lang('helloasso::app.admin.client-id')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.client-id')" aria-label="@lang('helloasso::help.client-id')">i</span>
                         </x-admin::form.control-group.label>
 
                         <x-admin::form.control-group.control
@@ -182,6 +194,7 @@
                     <x-admin::form.control-group class="!mb-0">
                         <x-admin::form.control-group.label for="helloasso-client-secret">
                             @lang('helloasso::app.admin.client-secret')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.client-secret')" aria-label="@lang('helloasso::help.client-secret')">i</span>
                         </x-admin::form.control-group.label>
 
                         <x-admin::form.control-group.control
@@ -200,6 +213,7 @@
                     <x-admin::form.control-group class="!mb-0">
                         <x-admin::form.control-group.label for="helloasso-webhook-key">
                             @lang('helloasso::app.admin.webhook-signature')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.webhook-signature')" aria-label="@lang('helloasso::help.webhook-signature')">i</span>
                         </x-admin::form.control-group.label>
 
                         <x-admin::form.control-group.control
@@ -227,12 +241,14 @@
                         <input id="helloasso-enable-sepa" type="checkbox" name="enable_sepa" value="1" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500" @checked(old('enable_sepa', $connection?->enable_sepa))>
                         <label for="helloasso-enable-sepa" class="text-sm font-medium text-gray-800 dark:text-gray-200">
                             @lang('helloasso::app.admin.enable-sepa')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.sepa')" aria-label="@lang('helloasso::help.sepa')">i</span>
                         </label>
                     </div>
 
                     <x-admin::form.control-group class="!mb-0">
                         <x-admin::form.control-group.label class="required" for="helloasso-initial-percent">
                             @lang('helloasso::app.admin.initial-percent')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.initial-percent')" aria-label="@lang('helloasso::help.initial-percent')">i</span>
                         </x-admin::form.control-group.label>
 
                         <x-admin::form.control-group.control
@@ -250,7 +266,10 @@
                     </x-admin::form.control-group>
 
                     <fieldset class="lg:col-span-2">
-                        <legend class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">@lang('helloasso::app.admin.installments')</legend>
+                        <legend class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                            @lang('helloasso::app.admin.installments')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.installments')" aria-label="@lang('helloasso::help.installments')">i</span>
+                        </legend>
 
                         <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11">
                             @foreach (range(2, 12) as $count)
@@ -271,7 +290,10 @@
 
                 <div class="grid gap-5 md:grid-cols-2">
                     <div>
-                        <label for="helloasso-order-policy" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-200">@lang('helloasso::app.admin.order-policy')</label>
+                        <label for="helloasso-order-policy" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                            @lang('helloasso::app.admin.order-policy')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.order-policy')" aria-label="@lang('helloasso::help.order-policy')">i</span>
+                        </label>
                         <select id="helloasso-order-policy" name="order_policy" required class="custom-select w-full rounded-md border-gray-300 bg-white px-3 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white">
                             <option value="first_authorized" @selected(old('order_policy', $connection?->order_policy ?? 'first_authorized') === 'first_authorized')>@lang('helloasso::app.admin.first-authorized')</option>
                             <option value="full_amount" @selected(old('order_policy', $connection?->order_policy) === 'full_amount')>@lang('helloasso::app.admin.full-amount')</option>
@@ -281,7 +303,10 @@
 
                     <label class="flex cursor-pointer items-start gap-3 rounded-md bg-gray-50 p-4 text-sm text-gray-700 dark:bg-gray-950 dark:text-gray-200">
                         <input type="checkbox" name="cancel_future_terms_on_full_refund" value="1" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500" @checked(old('cancel_future_terms_on_full_refund', $connection?->cancel_future_terms_on_full_refund ?? true))>
-                        <span>@lang('helloasso::app.admin.cancel-future-terms')</span>
+                        <span>
+                            @lang('helloasso::app.admin.cancel-future-terms')
+                            <span class="{{ $helpTip }}" tabindex="0" role="img" title="@lang('helloasso::help.cancel-future-terms')" aria-label="@lang('helloasso::help.cancel-future-terms')">i</span>
+                        </span>
                     </label>
                 </div>
             </section>

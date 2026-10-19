@@ -71,7 +71,7 @@ class CheckoutController extends Controller
         }
     }
 
-    public function selectPlan(Request $request, string $channel): JsonResponse
+    public function selectPlan(Request $request, string $channelCode): JsonResponse
     {
         $connection = Connection::globalConnection();
         $cart = Cart::getCart();
@@ -79,7 +79,7 @@ class CheckoutController extends Controller
         abort_unless(
             $connection
             && $cart
-            && core()->getCurrentChannelCode() === $channel,
+            && core()->getCurrentChannelCode() === $channelCode,
             403,
         );
 
@@ -96,7 +96,7 @@ class CheckoutController extends Controller
         return response()->json(['selected' => $count]);
     }
 
-    public function returned(Request $request, string $channel): RedirectResponse
+    public function returned(Request $request, string $channelCode): RedirectResponse
     {
         $connection = Connection::globalConnection();
         $intentId = $request->query('checkoutIntentId');
@@ -106,7 +106,7 @@ class CheckoutController extends Controller
                 ->with('error', trans('helloasso::app.checkout.invalid-return'));
         }
 
-        $attempt = CheckoutAttempt::where('channel_code', $channel)
+        $attempt = CheckoutAttempt::where('channel_code', $channelCode)
             ->where('organization_slug', $connection->organization_slug)
             ->where('checkout_intent_id', (int) $intentId)
             ->first();
@@ -143,10 +143,10 @@ class CheckoutController extends Controller
             ->with('info', trans('helloasso::app.checkout.payment-pending'));
     }
 
-    public function cancel(string $channel): RedirectResponse
+    public function cancel(string $channelCode): RedirectResponse
     {
-        $attemptId = session()->pull('helloasso.attempt.'.$channel);
-        $attempt = $attemptId ? CheckoutAttempt::where('id', $attemptId)->where('channel_code', $channel)->first() : null;
+        $attemptId = session()->pull('helloasso.attempt.'.$channelCode);
+        $attempt = $attemptId ? CheckoutAttempt::where('id', $attemptId)->where('channel_code', $channelCode)->first() : null;
 
         if ($attempt && ! $attempt->order_id) {
             $attempt->update(['status' => 'cancel_returned']);
@@ -156,10 +156,10 @@ class CheckoutController extends Controller
             ->with('info', trans('helloasso::app.checkout.payment-cancelled'));
     }
 
-    public function error(string $channel): RedirectResponse
+    public function error(string $channelCode): RedirectResponse
     {
-        $attemptId = session()->pull('helloasso.attempt.'.$channel);
-        $attempt = $attemptId ? CheckoutAttempt::where('id', $attemptId)->where('channel_code', $channel)->first() : null;
+        $attemptId = session()->pull('helloasso.attempt.'.$channelCode);
+        $attempt = $attemptId ? CheckoutAttempt::where('id', $attemptId)->where('channel_code', $channelCode)->first() : null;
 
         if ($attempt && ! $attempt->order_id) {
             $attempt->update(['status' => 'error_returned']);
@@ -173,7 +173,7 @@ class CheckoutController extends Controller
         Request $request,
         WebhookSignatureVerifier $signatures,
         OrganizationEligibilityService $eligibility,
-        ?string $channel = null,
+        ?string $channelCode = null,
     ): JsonResponse {
         $connection = Connection::globalConnection();
 
@@ -209,7 +209,7 @@ class CheckoutController extends Controller
         $receipt = WebhookReceipt::firstOrCreate([
             'payload_hash' => $payloadHash,
         ], [
-            'channel_code' => $channel ?? Connection::GLOBAL_KEY,
+            'channel_code' => $channelCode ?? Connection::GLOBAL_KEY,
             'event_type' => $eventType,
             'status' => 'received',
         ]);
@@ -269,7 +269,7 @@ class CheckoutController extends Controller
 
         $attempt = CheckoutAttempt::where('organization_slug', $connection->organization_slug)
             ->where('checkout_intent_id', $intentId)
-            ->when($channel, fn ($query) => $query->where('channel_code', $channel))
+            ->when($channelCode, fn ($query) => $query->where('channel_code', $channelCode))
             ->first();
 
         if (! $attempt) {

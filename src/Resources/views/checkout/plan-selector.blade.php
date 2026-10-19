@@ -14,7 +14,7 @@
             app.directive('helloasso-plan-selector', {
                 mounted(element) {
                     const counts = @json($installmentCounts);
-                    const url = @json(route('helloasso.payment.plan', ['channel' => core()->getCurrentChannelCode()]));
+                    const url = @json(route('helloasso.payment.plan', ['channelCode' => core()->getCurrentChannelCode()]));
                     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
                     const paidInFull = @json(trans('helloasso::app.checkout.pay-in-full'));
                     const installmentLabel = @json(trans('helloasso::app.checkout.installments', ['count' => '__COUNT__']));

@@ -51,9 +51,9 @@ class HelloAssoCheckoutService
             'totalAmount' => $amount,
             'initialAmount' => $amount,
             'itemName' => mb_substr('Commande boutique '.$cart->id, 0, 250),
-            'backUrl' => route('helloasso.payment.cancel', ['channel' => $channelCode]),
-            'errorUrl' => route('helloasso.payment.error', ['channel' => $channelCode]),
-            'returnUrl' => route('helloasso.payment.return', ['channel' => $channelCode]),
+            'backUrl' => route('helloasso.payment.cancel', ['channelCode' => $channelCode]),
+            'errorUrl' => route('helloasso.payment.error', ['channelCode' => $channelCode]),
+            'returnUrl' => route('helloasso.payment.return', ['channelCode' => $channelCode]),
             'containsDonation' => false,
             'payer' => $this->payer($cart),
             'metadata' => [

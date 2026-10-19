@@ -102,3 +102,29 @@ it('preserves HelloAsso API failures as failed requests', function () {
         expect($exception->statusCode)->toBe(503);
     }
 });
+
+it('preserves validation messages returned in the HelloAsso errors array', function () {
+    $connection = Connection::create([
+        'channel_code' => 'mejf',
+        'environment' => 'sandbox',
+        'auth_mode' => 'association',
+        'organization_slug' => 'mejf-test',
+        'client_id' => 'sandbox-client',
+        'access_token' => 'valid-access',
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    Http::fake(['*' => Http::response([
+        'errors' => [
+            ['code' => 'ArgumentInvalid', 'message' => 'Le champ nom est invalide'],
+        ],
+    ], 400)]);
+
+    try {
+        (new HelloAssoApiClient(new AccessTokenService))->get($connection, '/payments/9004');
+        $this->fail('A failed HelloAsso response must remain an API exception.');
+    } catch (HelloAssoApiException $exception) {
+        expect($exception->statusCode)->toBe(400)
+            ->and($exception->getMessage())->toBe('Le champ nom est invalide');
+    }
+});

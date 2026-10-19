@@ -80,11 +80,19 @@ class HelloAssoCheckoutService
             $payload['paymentOptions'] = ['enableSepa' => true];
         }
 
-        $response = $this->api->post(
-            $connection,
-            '/organizations/'.rawurlencode($connection->organization_slug).'/checkout-intents',
-            $payload,
-        );
+        $checkoutPath = '/organizations/'.rawurlencode($connection->organization_slug).'/checkout-intents';
+
+        try {
+            $response = $this->api->post($connection, $checkoutPath, $payload);
+        } catch (HelloAssoApiException $exception) {
+            if (! $this->isInvalidPayerNameError($exception)) {
+                throw $exception;
+            }
+
+            unset($payload['payer']);
+
+            $response = $this->api->post($connection, $checkoutPath, $payload);
+        }
 
         $redirectUrl = $response['redirectUrl'] ?? null;
 
@@ -125,6 +133,29 @@ class HelloAssoCheckoutService
             'zipCode' => $address?->postcode,
             'country' => $this->countryCode($address?->country),
         ], fn ($value) => $value !== null && $value !== '');
+    }
+
+    protected function isInvalidPayerNameError(HelloAssoApiException $exception): bool
+    {
+        $errors = $exception->responseData['errors'] ?? [];
+
+        if (! is_array($errors)) {
+            return false;
+        }
+
+        foreach ($errors as $error) {
+            if (
+                is_array($error)
+                &&
+                ($error['code'] ?? null) === 'ArgumentInvalid'
+                && is_string($error['message'] ?? null)
+                && preg_match('/\b(?:nom|name)\b/i', $error['message'])
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function countryCode(?string $country): ?string

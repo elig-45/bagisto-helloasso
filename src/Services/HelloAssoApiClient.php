@@ -45,8 +45,15 @@ class HelloAssoApiClient
         }
 
         if (! $response->successful()) {
+            $validationMessage = collect((array) $response->json('errors', []))
+                ->map(fn ($error) => is_array($error) ? ($error['message'] ?? null) : null)
+                ->filter(fn ($message) => is_string($message) && trim($message) !== '')
+                ->unique()
+                ->implode('; ');
+
             $message = $response->json('message')
                 ?? $response->json('error')
+                ?? ($validationMessage ?: null)
                 ?? 'HelloAsso request failed.';
 
             throw new HelloAssoApiException(

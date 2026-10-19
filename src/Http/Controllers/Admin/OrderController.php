@@ -10,44 +10,40 @@ use Elig45\BagistoHelloAsso\Services\RefundSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Webkul\Admin\Http\Controllers\Controller;
-use Webkul\Sales\Repositories\OrderRepository;
+use Webkul\Sales\Models\Order;
 
 class OrderController extends Controller
 {
-    public function __construct(protected OrderRepository $orders) {}
-
     public function sync(
-        int $order,
+        Order $order,
         OrderSettlementService $settlement,
         RefundSyncService $refunds,
     ): RedirectResponse {
-        $orderModel = $this->orders->findOrFail($order);
-        abort_unless($orderModel->payment?->method === 'helloasso', 404);
+        abort_unless($order->payment?->method === 'helloasso', 404);
         $connection = Connection::globalConnection();
         abort_unless($connection, 404);
 
         try {
-            $attempt = CheckoutAttempt::where('order_id', $orderModel->id)->firstOrFail();
+            $attempt = CheckoutAttempt::where('order_id', $order->id)->firstOrFail();
             $settlement->reconcile($attempt, $connection);
-            $refundCount = $refunds->syncOrder($orderModel->id, $connection);
+            $refundCount = $refunds->syncOrder($order->id, $connection);
 
-            return redirect()->route('admin.sales.orders.view', $orderModel->id)
+            return redirect()->route('admin.sales.orders.view', $order->id)
                 ->with('success', trans('helloasso::app.admin.sync-complete', ['count' => $refundCount]));
         } catch (\Throwable $exception) {
             report($exception);
 
-            return redirect()->route('admin.sales.orders.view', $orderModel->id)
+            return redirect()->route('admin.sales.orders.view', $order->id)
                 ->withErrors(['helloasso' => trans('helloasso::app.admin.sync-failed')]);
         }
     }
 
-    public function refund(Request $request, int $order, RefundSyncService $refunds): RedirectResponse
+    public function refund(Request $request, Order $order, RefundSyncService $refunds): RedirectResponse
     {
-        $orderModel = $this->orders->findOrFail($order);
-        abort_unless($orderModel->payment?->method === 'helloasso', 404);
+        abort_unless($order->payment?->method === 'helloasso', 404);
 
         $data = $request->validate([
-            'amount' => ['nullable', 'numeric', 'min:0.01', 'max:'.(float) $orderModel->grand_total],
+            'amount' => ['nullable', 'numeric', 'min:0.01', 'max:'.(float) $order->grand_total],
             'comment' => ['required', 'string', 'max:500'],
         ]);
 
@@ -56,42 +52,41 @@ class OrderController extends Controller
         $amount = isset($data['amount']) ? (int) round((float) $data['amount'] * 100) : null;
 
         try {
-            $refunds->requestRefund($orderModel->id, $connection, $amount, $data['comment']);
+            $refunds->requestRefund($order->id, $connection, $amount, $data['comment']);
 
-            return redirect()->route('admin.sales.orders.view', $orderModel->id)
+            return redirect()->route('admin.sales.orders.view', $order->id)
                 ->with('success', trans('helloasso::app.admin.refund-requested'));
         } catch (RefundNotSupportedException $exception) {
-            return redirect()->route('admin.sales.orders.view', $orderModel->id)
+            return redirect()->route('admin.sales.orders.view', $order->id)
                 ->withErrors(['helloasso' => $exception->getMessage()]);
         } catch (\Throwable $exception) {
             report($exception);
 
-            return redirect()->route('admin.sales.orders.view', $orderModel->id)
+            return redirect()->route('admin.sales.orders.view', $order->id)
                 ->withErrors(['helloasso' => trans('helloasso::app.admin.refund-check-remote')]);
         }
     }
 
-    public function cancelFuturePayments(int $order, RefundSyncService $refunds): RedirectResponse
+    public function cancelFuturePayments(Order $order, RefundSyncService $refunds): RedirectResponse
     {
-        $orderModel = $this->orders->findOrFail($order);
-        abort_unless($orderModel->payment?->method === 'helloasso', 404);
+        abort_unless($order->payment?->method === 'helloasso', 404);
         $connection = Connection::globalConnection();
         abort_unless($connection, 404);
 
         try {
-            $status = $refunds->cancelFuturePayments($orderModel->id, $connection);
+            $status = $refunds->cancelFuturePayments($order->id, $connection);
             $message = match ($status) {
                 'remote_and_local_canceled' => trans('helloasso::app.admin.future-payments-and-order-canceled'),
                 'remote_canceled_local_action_failed' => trans('helloasso::app.admin.future-payments-canceled-review-order'),
                 default => trans('helloasso::app.admin.future-payments-canceled'),
             };
 
-            return redirect()->route('admin.sales.orders.view', $orderModel->id)
+            return redirect()->route('admin.sales.orders.view', $order->id)
                 ->with('success', $message);
         } catch (\Throwable $exception) {
             report($exception);
 
-            return redirect()->route('admin.sales.orders.view', $orderModel->id)
+            return redirect()->route('admin.sales.orders.view', $order->id)
                 ->withErrors(['helloasso' => trans('helloasso::app.admin.cancel-future-payments-manual')]);
         }
     }

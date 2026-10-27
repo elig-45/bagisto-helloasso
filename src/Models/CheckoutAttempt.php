@@ -17,6 +17,7 @@ class CheckoutAttempt extends Model
         'cart_snapshot' => 'encrypted:array',
         'fulfillment_ready' => 'boolean',
         'future_payments_canceled' => 'boolean',
+        'sepa_enabled' => 'boolean',
         'last_checked_at' => 'immutable_datetime',
     ];
 

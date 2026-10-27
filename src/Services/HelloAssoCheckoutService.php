@@ -136,6 +136,7 @@ class HelloAssoCheckoutService
             'environment' => $connection->environment,
             'auth_mode' => $connection->auth_mode,
             'cart_fingerprint' => $fingerprint,
+            'sepa_enabled' => $connection->enable_sepa,
             'checkout_intent_id' => (int) ($response['id'] ?? 0),
             'reference' => $reference,
             'installment_plan' => $plan,

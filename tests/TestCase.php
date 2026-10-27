@@ -40,5 +40,8 @@ class TestCase extends OrchestraTestbenchCase
 
         $migration = require dirname(__DIR__).'/src/Database/Migrations/2026_10_19_000002_harden_helloasso_reconciliation.php';
         $migration->up();
+
+        $migration = require dirname(__DIR__).'/src/Database/Migrations/2026_10_27_000001_snapshot_sepa_option_on_checkout_attempts.php';
+        $migration->up();
     }
 }

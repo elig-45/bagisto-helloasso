@@ -78,13 +78,14 @@ class OrderSettlementService
 
             if (! $paymentIds) {
                 $refused = $attempt->status === 'refused';
+                $abandoned = ! $refused && $this->shouldAbandonUnpaidCheckout($attempt);
 
                 $attempt->update([
-                    'status' => $refused ? 'refused' : 'pending',
+                    'status' => $refused ? 'refused' : ($abandoned ? 'abandoned' : 'pending'),
                     'last_checked_at' => now(),
                 ]);
 
-                return $refused ? 'payment_refused' : 'pending';
+                return $refused ? 'payment_refused' : ($abandoned ? 'abandoned' : 'pending');
             }
 
             $remotePayments = [];
@@ -415,6 +416,13 @@ class OrderSettlementService
     {
         return $payments !== []
             && collect($payments)->every(fn (array $payment) => ($payment['state'] ?? null) === 'Refused');
+    }
+
+    protected function shouldAbandonUnpaidCheckout(CheckoutAttempt $attempt): bool
+    {
+        $timeoutMinutes = $attempt->sepa_enabled === false ? 45 : 28 * 60;
+
+        return $attempt->created_at?->lte(now()->subMinutes($timeoutMinutes)) ?? false;
     }
 
     protected function isOrderReady(

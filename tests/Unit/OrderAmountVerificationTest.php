@@ -84,6 +84,62 @@ it('recognizes a declined checkout only when every known payment is refused', fu
         ->and($method->invoke($service, [['state' => 'Refused'], ['state' => 'Authorized']]))->toBeFalse();
 });
 
+it('abandons unpaid card checkouts after 45 minutes and waits through SEPA webhook retries', function () {
+    $service = (new ReflectionClass(OrderSettlementService::class))->newInstanceWithoutConstructor();
+    $method = new ReflectionMethod(OrderSettlementService::class, 'shouldAbandonUnpaidCheckout');
+
+    expect($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subMinutes(46), 'sepa_enabled' => false])))->toBeTrue()
+        ->and($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subMinutes(44), 'sepa_enabled' => false])))->toBeFalse()
+        ->and($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subHours(27), 'sepa_enabled' => true])))->toBeFalse()
+        ->and($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subHours(29), 'sepa_enabled' => true])))->toBeTrue()
+        ->and($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subHours(27)])))->toBeFalse();
+});
+
+it('marks a remotely checked unpaid card attempt abandoned so its cart can start a fresh checkout', function () {
+    $connection = Connection::create([
+        'channel_code' => Connection::GLOBAL_KEY,
+        'environment' => 'sandbox',
+        'auth_mode' => 'association',
+        'organization_slug' => 'mejf-sandbox',
+        'client_id' => 'sandbox-client',
+        'client_secret' => 'sandbox-secret',
+        'enable_sepa' => false,
+    ]);
+    $attempt = CheckoutAttempt::create([
+        'cart_id' => 1901,
+        'channel_code' => 'mejf',
+        'organization_slug' => 'mejf-sandbox',
+        'environment' => 'sandbox',
+        'auth_mode' => 'association',
+        'sepa_enabled' => false,
+        'checkout_intent_id' => 2901,
+        'reference' => 'f23b57fc-d68a-4ecf-b85e-f8670b72ab4a',
+        'total_amount' => 3500,
+        'currency' => 'EUR',
+        'status' => 'pending',
+        'created_at' => now()->subMinutes(46),
+    ]);
+    $api = Mockery::mock(HelloAssoApiClient::class);
+    $api->shouldReceive('get')
+        ->once()
+        ->with($connection, '/organizations/mejf-sandbox/checkout-intents/2901')
+        ->andReturn([
+            'id' => 2901,
+            'metadata' => [
+                'bagisto_ref' => 'f23b57fc-d68a-4ecf-b85e-f8670b72ab4a',
+                'cart_id' => '1901',
+                'channel_code' => 'mejf',
+                'organization_slug' => 'mejf-sandbox',
+                'currency' => 'EUR',
+            ],
+        ]);
+    $service = (new ReflectionClass(OrderSettlementService::class))->newInstanceWithoutConstructor();
+    (new ReflectionProperty(OrderSettlementService::class, 'api'))->setValue($service, $api);
+
+    expect($service->reconcile($attempt, $connection))->toBe('abandoned')
+        ->and($attempt->fresh()->status)->toBe('abandoned');
+});
+
 it('matches each remote installment to the expected amount and checkout metadata', function () {
     $service = (new ReflectionClass(OrderSettlementService::class))->newInstanceWithoutConstructor();
     $method = new ReflectionMethod(OrderSettlementService::class, 'paymentMatchesAttempt');

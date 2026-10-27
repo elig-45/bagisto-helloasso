@@ -79,6 +79,7 @@ it('creates a euro checkout intent with payer data and a balanced installment pl
         ->and($attempt->total_amount)->toBe(3500)
         ->and($attempt->currency)->toBe('EUR')
         ->and($attempt->installment_count)->toBe(3)
+        ->and($attempt->sepa_enabled)->toBeTrue()
         ->and($attempt->status)->toBe('redirected')
         ->and($attempt->cart_snapshot)->toBe($cart->snapshot)
         ->and($capturedPayload['totalAmount'])->toBe(3500)

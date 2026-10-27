@@ -46,7 +46,7 @@ class Connection extends Model
 
     public function canManageAttempt(CheckoutAttempt $attempt): bool
     {
-        return $this->isProductionAllowed()
+        return in_array($this->environment, ['sandbox', 'production'], true)
             && $this->environment === $attempt->environment
             && $this->auth_mode === $attempt->auth_mode
             && hash_equals((string) $this->organization_slug, (string) $attempt->organization_slug);

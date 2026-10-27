@@ -1,5 +1,6 @@
 <?php
 
+use Elig45\BagistoHelloAsso\Models\CheckoutAttempt;
 use Elig45\BagistoHelloAsso\Models\Connection;
 
 it('allows production only when the deployment explicitly permits it', function () {
@@ -22,4 +23,22 @@ it('fails closed for unknown environments and refuses to select an API host', fu
         ->and($connection->isProductionAllowed())->toBeFalse()
         ->and(fn () => $connection->apiBaseUrl())->toThrow(UnexpectedValueException::class)
         ->and(fn () => $connection->oauthBaseUrl())->toThrow(UnexpectedValueException::class);
+});
+
+it('keeps existing production attempts manageable when new production checkouts are disabled', function () {
+    config(['helloasso.allow_production' => false]);
+
+    $connection = Connection::make([
+        'environment' => 'production',
+        'auth_mode' => 'association',
+        'organization_slug' => 'mejf',
+    ]);
+    $attempt = CheckoutAttempt::make([
+        'environment' => 'production',
+        'auth_mode' => 'association',
+        'organization_slug' => 'mejf',
+    ]);
+
+    expect($connection->isProductionAllowed())->toBeFalse()
+        ->and($connection->canManageAttempt($attempt))->toBeTrue();
 });

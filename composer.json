@@ -1,6 +1,6 @@
 {
     "name": "elig45/bagisto-helloasso",
-    "description": "HelloAsso checkout payment method for Bagisto 2.4",
+    "description": "HelloAsso checkout payment method for Bagisto 2.4 and 2.5",
     "type": "library",
     "license": "AGPL-3.0-only",
     "require": {

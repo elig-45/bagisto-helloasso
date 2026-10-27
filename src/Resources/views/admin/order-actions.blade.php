@@ -119,6 +119,36 @@
     })();
 </script>
 
+@if ($attempt?->installment_count > 1)
+    <div class="mt-3 overflow-x-auto rounded border border-gray-200 dark:border-gray-800">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 text-xs uppercase text-gray-600 dark:bg-gray-900 dark:text-gray-300">
+                <tr>
+                    <th class="px-3 py-2">@lang('helloasso::app.admin.schedule')</th>
+                    <th class="px-3 py-2">@lang('helloasso::app.admin.scheduled-date')</th>
+                    <th class="px-3 py-2">@lang('helloasso::app.admin.amount')</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                <tr>
+                    <td class="px-3 py-2">@lang('helloasso::app.admin.initial-payment')</td>
+                    <td class="px-3 py-2">{{ $attempt->created_at?->format('d/m/Y') ?? '—' }}</td>
+                    <td class="px-3 py-2">{{ number_format((int) data_get($attempt->installment_plan, 'initialAmount', 0) / 100, 2, ',', ' ') }} €</td>
+                </tr>
+                @foreach (data_get($attempt->installment_plan, 'terms', []) as $index => $term)
+                    <tr>
+                        <td class="px-3 py-2">@lang('helloasso::app.admin.installment-number', ['number' => $index + 2])</td>
+                        <td class="px-3 py-2">
+                            {{ ! empty($term['date']) ? \Illuminate\Support\Carbon::parse($term['date'])->format('d/m/Y') : '—' }}
+                        </td>
+                        <td class="px-3 py-2">{{ number_format((int) ($term['amount'] ?? 0) / 100, 2, ',', ' ') }} €</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+@endif
+
 @if ($payments->isNotEmpty())
     <div class="mt-3 overflow-x-auto rounded border border-gray-200 dark:border-gray-800">
         <table class="w-full text-left text-sm">
@@ -141,7 +171,16 @@
                         <td class="px-3 py-2">{{ number_format($payment->amount / 100, 2, ',', ' ') }} €</td>
                         <td class="px-3 py-2">{{ $payment->payment_means ?? '—' }}</td>
                         <td class="px-3 py-2">{{ $payment->state }}</td>
-                        <td class="px-3 py-2">{{ number_format($payment->refunded_amount / 100, 2, ',', ' ') }} €</td>
+                        <td class="px-3 py-2">
+                            <div>{{ number_format($payment->refunded_amount / 100, 2, ',', ' ') }} €</div>
+                            @foreach ((array) data_get($payment->remote_data, 'refundOperations', []) as $operation)
+                                <div class="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                                    @lang('helloasso::app.admin.refund-operation')
+                                    {{ $operation['id'] ?? '—' }} · {{ $operation['status'] ?? 'Unknown' }} ·
+                                    {{ number_format((int) ($operation['amount'] ?? 0) / 100, 2, ',', ' ') }} €
+                                </div>
+                            @endforeach
+                        </td>
                         <td class="px-3 py-2">
                             @if (is_string($receiptUrl) && parse_url($receiptUrl, PHP_URL_SCHEME) === 'https' && is_string($receiptHost) && ($receiptHost === 'helloasso.com' || str_ends_with($receiptHost, '.helloasso.com') || $receiptHost === 'helloasso-sandbox.com' || str_ends_with($receiptHost, '.helloasso-sandbox.com')))
                                 <a class="text-blue-600 underline" href="{{ $receiptUrl }}" target="_blank" rel="noopener noreferrer">@lang('helloasso::app.admin.view-receipt')</a>

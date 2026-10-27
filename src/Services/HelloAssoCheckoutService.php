@@ -9,6 +9,21 @@ use Webkul\Sales\Transformers\OrderResource;
 
 class HelloAssoCheckoutService
 {
+    protected const INVALID_PAYER_NAMES = [
+        'firstname',
+        'lastname',
+        'unknown',
+        'first_name',
+        'last_name',
+        'anonyme',
+        'user',
+        'admin',
+        'name',
+        'nom',
+        'prénom',
+        'test',
+    ];
+
     public function __construct(
         protected HelloAssoApiClient $api,
         protected InstallmentPlanBuilder $plans,
@@ -99,7 +114,7 @@ class HelloAssoCheckoutService
                 throw $exception;
             }
 
-            unset($payload['payer']);
+            $payload = $this->removeInvalidPayerNames($payload);
 
             $response = $this->api->post($connection, $checkoutPath, $payload);
         }
@@ -135,17 +150,73 @@ class HelloAssoCheckoutService
 
     protected function payer(object $cart): array
     {
-        $address = $cart->billing_address;
+        $address = data_get($cart, 'billing_address');
+        $firstName = $this->payerName(data_get($address, 'first_name') ?: data_get($cart, 'customer_first_name'));
+        $lastName = $this->payerName(data_get($address, 'last_name') ?: data_get($cart, 'customer_last_name'));
+
+        if ($firstName !== null && $lastName !== null && mb_strtolower($firstName) === mb_strtolower($lastName)) {
+            $firstName = null;
+            $lastName = null;
+        }
+
+        $email = $this->payerString(data_get($cart, 'customer_email') ?: data_get($address, 'email') ?: data_get($cart, 'customer.email'));
+
+        if ($email !== null && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $email = null;
+        }
+
+        $addressLines = data_get($address, 'address') ?: data_get($address, 'address1');
 
         return array_filter([
-            'firstName' => $address?->first_name,
-            'lastName' => $address?->last_name,
-            'email' => $cart->customer_email,
-            'address' => $address?->address1 ? implode(' ', (array) $address->address1) : null,
-            'city' => $address?->city,
-            'zipCode' => $address?->postcode,
-            'country' => $this->countryCode($address?->country),
-        ], fn ($value) => $value !== null && $value !== '');
+            'firstName' => $firstName,
+            'lastName' => $lastName,
+            'email' => $email,
+            'address' => $this->payerString(is_array($addressLines) ? implode(' ', $addressLines) : $addressLines),
+            'city' => $this->payerString(data_get($address, 'city')),
+            'zipCode' => $this->payerString(data_get($address, 'postcode')),
+            'country' => $this->countryCode(data_get($address, 'country')),
+        ], fn ($value) => $value !== null);
+    }
+
+    protected function payerName(mixed $value): ?string
+    {
+        $name = $this->payerString($value);
+
+        if (
+            $name === null
+            || mb_strlen($name) > 255
+            || mb_strlen(preg_replace('/[^\p{L}]/u', '', $name) ?? '') < 2
+            || preg_match('/(.)\1{2}/u', $name)
+            || ! preg_match('/[aeiouyàáâãäåèéêëìíîïòóôõöùúûüÿ]/iu', $name)
+            || ! preg_match('/\A[A-Za-zÀÁÂÃÄÅàáâãäåÈÉÊËèéêëÙÚÛÜùúûüÇç ‘-]+\z/u', $name)
+            || in_array(mb_strtolower($name), self::INVALID_PAYER_NAMES, true)
+        ) {
+            return null;
+        }
+
+        return $name;
+    }
+
+    protected function payerString(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = preg_replace('/\s+/u', ' ', trim($value));
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    protected function removeInvalidPayerNames(array $payload): array
+    {
+        unset($payload['payer']['firstName'], $payload['payer']['lastName']);
+
+        if (($payload['payer'] ?? []) === []) {
+            unset($payload['payer']);
+        }
+
+        return $payload;
     }
 
     protected function isInvalidPayerNameError(HelloAssoApiException $exception): bool

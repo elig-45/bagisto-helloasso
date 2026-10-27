@@ -134,6 +134,11 @@ class CheckoutController extends Controller
                 ->with('error', trans('helloasso::app.checkout.verification-failed'));
         }
 
+        if ($status === 'payment_refused') {
+            return redirect()->route('shop.checkout.cart.index')
+                ->with('error', trans('helloasso::app.checkout.remote-error'));
+        }
+
         if (
             $attempt->fresh()->order_id
             && in_array($status, ['order_ready', 'order_pending_payment'], true)

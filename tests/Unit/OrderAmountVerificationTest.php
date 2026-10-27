@@ -72,6 +72,17 @@ it('recognizes waiting SEPA states without treating refused payments as pending'
         ->and($method->invoke($service, [['paymentMeans' => 'Card', 'state' => 'Pending']]))->toBeFalse();
 });
 
+it('recognizes a declined checkout only when every known payment is refused', function () {
+    $service = (new ReflectionClass(OrderSettlementService::class))->newInstanceWithoutConstructor();
+    $method = new ReflectionMethod(OrderSettlementService::class, 'hasOnlyRefusedPayments');
+
+    expect($method->invoke($service, [['state' => 'Refused']]))->toBeTrue()
+        ->and($method->invoke($service, [['state' => 'Refused'], ['state' => 'Refused']]))->toBeTrue()
+        ->and($method->invoke($service, []))->toBeFalse()
+        ->and($method->invoke($service, [['state' => 'Refused'], ['state' => 'Pending']]))->toBeFalse()
+        ->and($method->invoke($service, [['state' => 'Refused'], ['state' => 'Authorized']]))->toBeFalse();
+});
+
 it('keeps SEPA installment orders pending until the full amount is authorized', function () {
     $service = (new ReflectionClass(OrderSettlementService::class))->newInstanceWithoutConstructor();
     $method = new ReflectionMethod(OrderSettlementService::class, 'isOrderReady');

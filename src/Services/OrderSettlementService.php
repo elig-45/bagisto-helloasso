@@ -77,9 +77,14 @@ class OrderSettlementService
                     : []);
 
             if (! $paymentIds) {
-                $attempt->update(['status' => 'pending', 'last_checked_at' => now()]);
+                $refused = $attempt->status === 'refused';
 
-                return 'pending';
+                $attempt->update([
+                    'status' => $refused ? 'refused' : 'pending',
+                    'last_checked_at' => now(),
+                ]);
+
+                return $refused ? 'payment_refused' : 'pending';
             }
 
             $remotePayments = [];
@@ -142,12 +147,15 @@ class OrderSettlementService
         $fullyPaid = $authorizedCents >= $attempt->total_amount;
         $hasSepaPayment = $this->hasSepaPayment($remotePayments);
         $hasPendingSepaPayment = $this->hasPendingSepaPayment($remotePayments);
+        $paymentRefused = ! $hasAuthorized
+            && ! $hasPendingSepaPayment
+            && $this->hasOnlyRefusedPayments($remotePayments);
         $remoteOrderId = (int) ($remoteOrder['id'] ?? 0) ?: null;
 
         $attempt->forceFill([
             'remote_order_id' => $remoteOrderId,
             'remote_order' => $this->safeOrderData($remoteOrder),
-            'status' => $hasAuthorized ? 'partially_paid' : 'pending',
+            'status' => $paymentRefused ? 'refused' : ($hasAuthorized ? 'partially_paid' : 'pending'),
             'last_checked_at' => now(),
         ])->save();
 
@@ -155,7 +163,7 @@ class OrderSettlementService
         $createOrder = $this->shouldCreateOrder($policy, $hasAuthorized, $fullyPaid, $hasPendingSepaPayment);
 
         if (! $createOrder && ! $attempt->order_id) {
-            return $hasAuthorized ? 'payment_recorded' : 'pending';
+            return $paymentRefused ? 'payment_refused' : ($hasAuthorized ? 'payment_recorded' : 'pending');
         }
 
         return Cache::lock('helloasso.order.'.$attempt->cart_id, 30)->block(10, function () use (
@@ -165,6 +173,7 @@ class OrderSettlementService
             $authorizedCents,
             $fullyPaid,
             $remoteOrderId,
+            $paymentRefused,
         ) {
             $order = $this->orders->findOneWhere(['cart_id' => $attempt->cart_id]);
 
@@ -196,7 +205,7 @@ class OrderSettlementService
 
             $attempt->update([
                 'order_id' => $order->id,
-                'status' => $fullyPaid ? 'paid' : ($authorizedCents > 0 ? 'partially_paid' : 'pending'),
+                'status' => $fullyPaid ? 'paid' : ($paymentRefused ? 'refused' : ($authorizedCents > 0 ? 'partially_paid' : 'pending')),
                 'fulfillment_ready' => $this->isOrderReady(
                     $connection,
                     $attempt,
@@ -268,7 +277,7 @@ class OrderSettlementService
                 $this->orders->updateOrderStatus($order, Order::STATUS_PENDING_PAYMENT);
             }
 
-            return $ready ? 'order_ready' : 'order_pending_payment';
+            return $paymentRefused ? 'payment_refused' : ($ready ? 'order_ready' : 'order_pending_payment');
         });
     }
 
@@ -400,6 +409,12 @@ class OrderSettlementService
         }
 
         return false;
+    }
+
+    protected function hasOnlyRefusedPayments(array $payments): bool
+    {
+        return $payments !== []
+            && collect($payments)->every(fn (array $payment) => ($payment['state'] ?? null) === 'Refused');
     }
 
     protected function isOrderReady(

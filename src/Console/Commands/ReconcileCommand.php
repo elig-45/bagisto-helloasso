@@ -24,7 +24,7 @@ class ReconcileCommand extends Command
 
         $attempts = CheckoutAttempt::where(function ($query) {
             $query->where(function ($query) {
-                $query->whereNotIn('status', ['paid', 'abandoned', 'canceled', 'metadata_mismatch', 'amount_mismatch'])
+                $query->whereNotIn('status', ['paid', 'refused', 'abandoned', 'canceled', 'metadata_mismatch', 'amount_mismatch'])
                     ->where(function ($query) {
                         $query->whereNull('last_checked_at')->orWhere('last_checked_at', '<', now()->subMinutes(4));
                     });
@@ -42,7 +42,7 @@ class ReconcileCommand extends Command
 
         foreach ($attempts as $attempt) {
             try {
-                if (! in_array($attempt->status, ['paid', 'canceled', 'metadata_mismatch', 'amount_mismatch'], true)) {
+                if (! in_array($attempt->status, ['paid', 'refused', 'canceled', 'metadata_mismatch', 'amount_mismatch'], true)) {
                     $settlement->reconcile($attempt, $connection);
                 }
 

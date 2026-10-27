@@ -14,3 +14,12 @@ it('allows production in deployments that have not enabled the sandbox guard', f
 
     expect(Connection::make(['environment' => 'production'])->isProductionAllowed())->toBeTrue();
 });
+
+it('fails closed for unknown environments and refuses to select an API host', function () {
+    $connection = Connection::make(['environment' => 'unexpected']);
+
+    expect($connection->isSandbox())->toBeFalse()
+        ->and($connection->isProductionAllowed())->toBeFalse()
+        ->and(fn () => $connection->apiBaseUrl())->toThrow(UnexpectedValueException::class)
+        ->and(fn () => $connection->oauthBaseUrl())->toThrow(UnexpectedValueException::class);
+});

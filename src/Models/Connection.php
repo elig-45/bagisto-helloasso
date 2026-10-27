@@ -32,12 +32,16 @@ class Connection extends Model
 
     public function isSandbox(): bool
     {
-        return $this->environment !== 'production';
+        return $this->environment === 'sandbox';
     }
 
     public function isProductionAllowed(): bool
     {
-        return $this->isSandbox() || (bool) config('helloasso.allow_production', false);
+        return match ($this->environment) {
+            'sandbox' => true,
+            'production' => (bool) config('helloasso.allow_production', false),
+            default => false,
+        };
     }
 
     public function canManageAttempt(CheckoutAttempt $attempt): bool
@@ -50,15 +54,19 @@ class Connection extends Model
 
     public function apiBaseUrl(): string
     {
-        return $this->isSandbox()
-            ? 'https://api.helloasso-sandbox.com/v5'
-            : 'https://api.helloasso.com/v5';
+        return match ($this->environment) {
+            'sandbox' => 'https://api.helloasso-sandbox.com/v5',
+            'production' => 'https://api.helloasso.com/v5',
+            default => throw new \UnexpectedValueException('Unsupported HelloAsso environment.'),
+        };
     }
 
     public function oauthBaseUrl(): string
     {
-        return $this->isSandbox()
-            ? 'https://api.helloasso-sandbox.com'
-            : 'https://api.helloasso.com';
+        return match ($this->environment) {
+            'sandbox' => 'https://api.helloasso-sandbox.com',
+            'production' => 'https://api.helloasso.com',
+            default => throw new \UnexpectedValueException('Unsupported HelloAsso environment.'),
+        };
     }
 }

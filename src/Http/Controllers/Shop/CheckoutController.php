@@ -290,7 +290,26 @@ class CheckoutController extends Controller
         if (! $intentId && $paymentId) {
             try {
                 $payment = $this->api->get($connection, '/payments/'.$paymentId);
-                $intentId = (int) ($payment['checkoutIntentId'] ?? 0) ?: null;
+
+                if ((int) ($payment['id'] ?? 0) === $paymentId) {
+                    $intentId = (int) ($payment['checkoutIntentId'] ?? 0) ?: null;
+
+                    if (! $intentId) {
+                        $orderId = $this->findOrderId($eventData) ?? $this->findOrderId($payment);
+
+                        if ($orderId) {
+                            $order = $this->api->get($connection, '/orders/'.$orderId);
+
+                            if (
+                                (int) ($order['id'] ?? 0) === $orderId
+                                && (! isset($order['organizationSlug'])
+                                    || $order['organizationSlug'] === $connection->organization_slug)
+                            ) {
+                                $intentId = (int) ($order['checkoutIntentId'] ?? 0) ?: null;
+                            }
+                        }
+                    }
+                }
             } catch (\Throwable $exception) {
                 report($exception);
                 $receipt->update(['status' => 'failed']);
@@ -372,6 +391,34 @@ class CheckoutController extends Controller
             }
 
             if (is_array($value) && ($found = $this->findPaymentId($value))) {
+                return $found;
+            }
+        }
+
+        return null;
+    }
+
+    protected function findOrderId(array $data): ?int
+    {
+        foreach ($data as $key => $value) {
+            if (
+                in_array($key, ['orderId', 'order_id'], true)
+                && ctype_digit((string) $value)
+                && (int) $value > 0
+            ) {
+                return (int) $value;
+            }
+
+            if (
+                $key === 'order'
+                && is_array($value)
+                && ctype_digit((string) ($value['id'] ?? ''))
+                && (int) $value['id'] > 0
+            ) {
+                return (int) $value['id'];
+            }
+
+            if (is_array($value) && ($found = $this->findOrderId($value))) {
                 return $found;
             }
         }

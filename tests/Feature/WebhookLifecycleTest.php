@@ -45,10 +45,10 @@ function callSignedWebhook(Closure $call, array $payload, string $secret = 'part
     return $call($body, $signature);
 }
 
-function bindWebhookControllerDependencies(OrderSettlementService $settlement): void
+function bindWebhookControllerDependencies(OrderSettlementService $settlement, ?HelloAssoApiClient $api = null): void
 {
     app()->instance(HelloAssoCheckoutService::class, Mockery::mock(HelloAssoCheckoutService::class));
-    app()->instance(HelloAssoApiClient::class, Mockery::mock(HelloAssoApiClient::class));
+    app()->instance(HelloAssoApiClient::class, $api ?? Mockery::mock(HelloAssoApiClient::class));
     app()->instance(OrderSettlementService::class, $settlement);
     app()->instance(CartRepository::class, new stdClass);
 }
@@ -110,6 +110,90 @@ it('processes a payment notification before its later order notification', funct
     expect($payment->json('status'))->toBe('processed')
         ->and($order->json('status'))->toBe('processed')
         ->and(WebhookReceipt::where('status', 'processed')->count())->toBe(2);
+});
+
+it('resolves a pending SEPA payment through its order when the payment API omits the checkout intent', function () {
+    $connection = webhookTestConnection();
+    $attempt = webhookTestAttempt();
+    $api = Mockery::mock(HelloAssoApiClient::class);
+    $api->shouldReceive('get')->once()
+        ->withArgs(fn ($actualConnection, $path) => $actualConnection->is($connection) && $path === '/payments/9901')
+        ->andReturn([
+            'id' => 9901,
+            'paymentMeans' => 'Sepa',
+            'state' => 'WaitingBankValidation',
+        ]);
+    $api->shouldReceive('get')->once()
+        ->withArgs(fn ($actualConnection, $path) => $actualConnection->is($connection) && $path === '/orders/22707')
+        ->andReturn([
+            'id' => 22707,
+            'checkoutIntentId' => 2901,
+            'organizationSlug' => 'mejf-sandbox',
+        ]);
+
+    $settlement = Mockery::mock(OrderSettlementService::class);
+    $settlement->shouldReceive('reconcile')
+        ->once()
+        ->withArgs(fn ($actualAttempt, $actualConnection, $paymentId, $trusted) => $actualAttempt->is($attempt)
+            && $actualConnection->is($connection)
+            && $paymentId === 9901
+            && $trusted === true
+        )
+        ->andReturn('order_pending_payment');
+    bindWebhookControllerDependencies($settlement, $api);
+
+    $payload = [
+        'eventType' => 'Payment',
+        'data' => [
+            'order' => ['id' => 22707, 'organizationSlug' => 'mejf-sandbox'],
+            'id' => 9901,
+            'paymentMeans' => 'Sepa',
+            'state' => 'WaitingBankValidation',
+        ],
+    ];
+    $response = callSignedWebhook(
+        fn (string $body, string $signature) => $this->call('POST', '/helloasso/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_HA_SIGNATURE' => $signature,
+        ], $body),
+        $payload,
+    );
+
+    expect($response->status())->toBe(200)
+        ->and($response->json('status'))->toBe('processed')
+        ->and(WebhookReceipt::first()->status)->toBe('processed');
+});
+
+it('does not associate a payment with an order from another organization', function () {
+    $connection = webhookTestConnection();
+    webhookTestAttempt();
+    $api = Mockery::mock(HelloAssoApiClient::class);
+    $api->shouldReceive('get')->once()
+        ->withArgs(fn ($actualConnection, $path) => $actualConnection->is($connection) && $path === '/payments/9902')
+        ->andReturn(['id' => 9902, 'orderId' => 22708, 'state' => 'WaitingBankValidation']);
+    $api->shouldReceive('get')->once()
+        ->withArgs(fn ($actualConnection, $path) => $actualConnection->is($connection) && $path === '/orders/22708')
+        ->andReturn([
+            'id' => 22708,
+            'checkoutIntentId' => 2901,
+            'organizationSlug' => 'another-organization',
+        ]);
+
+    $settlement = Mockery::mock(OrderSettlementService::class);
+    $settlement->shouldNotReceive('reconcile');
+    bindWebhookControllerDependencies($settlement, $api);
+
+    $response = callSignedWebhook(
+        fn (string $body, string $signature) => $this->call('POST', '/helloasso/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_HA_SIGNATURE' => $signature,
+        ], $body),
+        ['eventType' => 'Payment', 'data' => ['id' => 9902]],
+    );
+
+    expect($response->status())->toBe(200)
+        ->and($response->json('status'))->toBe('checkout_not_found')
+        ->and(WebhookReceipt::first()->status)->toBe('ignored');
 });
 
 it('rejects a forged notification and retries the same receipt after a transient settlement failure', function () {

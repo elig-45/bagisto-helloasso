@@ -12,8 +12,8 @@
 </div>
 
 [![PHP](https://img.shields.io/badge/PHP-8.3%20%7C%208.4-777BB4?logo=php&logoColor=white)](https://www.php.net/)
-[![Bagisto](https://img.shields.io/badge/Bagisto-2.4.x-0E9F6E)](https://bagisto.com/)
-[![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
+[![Bagisto](https://img.shields.io/badge/Bagisto-2.4%20%7C%202.5-0E9F6E)](https://bagisto.com/)
+[![Laravel](https://img.shields.io/badge/Laravel-12%20%7C%2013-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
 [![Licence AGPL-3.0](https://img.shields.io/badge/Licence-AGPL--3.0-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-Pest-6C2EB9)](tests/)
 
@@ -49,15 +49,15 @@ Ce package couvre le règlement de commandes Bagisto en euros. Les campagnes, la
 
 ### Technologies
 
-- [Bagisto 2.4](https://bagisto.com/) et [Laravel 12](https://laravel.com/)
+- [Bagisto](https://bagisto.com/) 2.4 avec Laravel 12, ou 2.5 avec Laravel 13
 - PHP 8.3 ou 8.4
 - HTTP Client Laravel pour les API HelloAsso
 - [Pest](https://pestphp.com/) pour les tests
 
 ## Compatibilité et prérequis
 
-- Bagisto 2.4.x sur Laravel 12.
-- PHP 8.3 ou 8.4 avec les extensions requises par Bagisto.
+- Bagisto 2.4.x sur Laravel 12, ou Bagisto 2.5.x sur Laravel 13.
+- PHP 8.3 ou 8.4 avec les extensions requises par la version de Bagisto installée.
 - Une clé `APP_KEY` définie et stable : les secrets, jetons et instantanés de panier temporaires sont chiffrés avec cette clé.
 - Un accès HTTPS sortant vers l’API HelloAsso, ainsi qu’un planificateur Laravel actif pour le rapprochement périodique.
 - Un compte d’association HelloAsso autorisé à encaisser, ou un compte partenaire configuré pour OAuth.
@@ -133,6 +133,8 @@ composer check-translations
 ```
 
 Les tests couvrent notamment l’authentification et le renouvellement des jetons, les montants, les échéanciers, les retours non fiables, les notifications répétées et les 22 catalogues de traduction.
+
+La CI vérifie les combinaisons PHP 8.3 avec Laravel 12, PHP 8.4 avec Laravel 12 et PHP 8.4 avec Laravel 13.
 
 Pour une recette complète, utilisez des identifiants sandbox, configurez les notifications HelloAsso et vérifiez l’accès réseau ainsi que l’exécution régulière du planificateur.
 

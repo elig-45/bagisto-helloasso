@@ -45,13 +45,13 @@ class HelloAssoCheckoutService
             throw new \RuntimeException('HelloAsso Checkout requires a positive amount of at least one euro.');
         }
 
-        $snapshot = (new OrderResource($cart))->jsonSerialize();
+        $snapshot = $this->cartSnapshot($cart);
         $fingerprint = hash('sha256', json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 
         $existing = CheckoutAttempt::where('cart_id', $cart->id)
             ->where('channel_code', $channelCode)
             ->whereNull('order_id')
-            ->whereNotIn('status', ['paid', 'canceled', 'abandoned', 'metadata_mismatch', 'amount_mismatch'])
+            ->whereNotIn('status', ['paid', 'refused', 'canceled', 'abandoned', 'metadata_mismatch', 'amount_mismatch'])
             ->latest('id')
             ->first();
 
@@ -176,6 +176,11 @@ class HelloAssoCheckoutService
             'zipCode' => $this->payerString(data_get($address, 'postcode')),
             'country' => $this->countryCode(data_get($address, 'country')),
         ], fn ($value) => $value !== null);
+    }
+
+    protected function cartSnapshot(object $cart): array
+    {
+        return (new OrderResource($cart))->jsonSerialize();
     }
 
     protected function payerName(mixed $value): ?string

@@ -4,6 +4,7 @@ namespace Elig45\BagistoHelloAsso\Listeners;
 
 use Elig45\BagistoHelloAsso\Exceptions\ProtectedOrderAction;
 use Elig45\BagistoHelloAsso\Models\CheckoutAttempt;
+use Elig45\BagistoHelloAsso\Models\HelloAssoPayment;
 use Elig45\BagistoHelloAsso\Services\RefundSyncGuard;
 use Webkul\Sales\Models\Order;
 use Webkul\Sales\Repositories\OrderRepository;
@@ -82,10 +83,19 @@ class ProtectOrderActions
             return;
         }
 
-        $attempt = CheckoutAttempt::where('order_id', $orderId)->first();
-
-        if (! $attempt || ! $attempt->fulfillment_ready) {
+        if (! $this->canFulfill($orderId)) {
             throw new ProtectedOrderAction((int) $order->id);
         }
+    }
+
+    protected function canFulfill(int $orderId): bool
+    {
+        $attempt = CheckoutAttempt::where('order_id', $orderId)->first();
+
+        return $attempt !== null
+            && $attempt->fulfillment_ready
+            && ! HelloAssoPayment::where('order_id', $orderId)
+                ->where('state', 'Contested')
+                ->exists();
     }
 }

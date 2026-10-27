@@ -63,10 +63,22 @@ it('merges channel connections and payment activation into one global configurat
     $migration = require dirname(__DIR__, 2).'/src/Database/Migrations/2026_10_19_000001_make_helloasso_configuration_global.php';
     $migration->up();
 
+    $normalizeMigration = require dirname(__DIR__, 2).'/src/Database/Migrations/2026_10_27_000002_normalize_global_helloasso_payment_configuration.php';
+    $normalizeMigration->up();
+
     expect(Connection::query()->count())->toBe(3)
         ->and(Connection::globalConnection()?->organization_slug)->toBe('mejf-sandbox')
         ->and(DB::table('core_config')->where('code', 'sales.payment_methods.helloasso.active')->whereNull('channel_code')->value('value'))->toBe('1')
-        ->and(DB::table('core_config')->where('code', 'sales.payment_methods.helloasso.title')->whereNull('channel_code')->value('value'))->toBe('Bétar HelloAsso');
+        ->and(DB::table('core_config')->where('code', 'sales.payment_methods.helloasso.title')->whereNull('channel_code')->value('value'))->toBe('Bétar HelloAsso')
+        ->and(DB::table('core_config')->where('code', 'sales.payment_methods.helloasso.active')->orderBy('id')->value('value'))->toBe('1')
+        ->and(DB::table('core_config')->where('code', 'sales.payment_methods.helloasso.title')->where('locale_code', 'fr')->orderBy('id')->value('value'))->toBe('Bétar HelloAsso')
+        ->and(DB::table('core_config')->where('code', 'sales.payment_methods.helloasso.active')->whereNotNull('channel_code')->exists())->toBeFalse();
+
+    $normalizeMigration->down();
+
+    expect(DB::table('core_config')->where('code', 'sales.payment_methods.helloasso.active')->orderBy('id')->value('value'))->toBe('0')
+        ->and(DB::table('core_config')->where('code', 'sales.payment_methods.helloasso.active')->orderBy('id')->value('channel_code'))->toBe('mejf')
+        ->and(DB::table('core_config')->where('code', 'sales.payment_methods.helloasso.title')->where('locale_code', 'fr')->orderBy('id')->value('value'))->toBe('MEJF HelloAsso');
 
     $migration->down();
 

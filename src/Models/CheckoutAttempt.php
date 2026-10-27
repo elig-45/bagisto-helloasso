@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CheckoutAttempt extends Model
 {
+    public const REDIRECT_RETRY_AFTER_MINUTES = 16;
+
     protected $table = 'helloasso_checkout_attempts';
 
     protected $guarded = ['id'];

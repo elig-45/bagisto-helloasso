@@ -1,14 +1,18 @@
 <?php
 
+use Elig45\BagistoHelloAsso\Exceptions\CheckoutStillPending;
 use Elig45\BagistoHelloAsso\Models\CheckoutAttempt;
 use Elig45\BagistoHelloAsso\Models\Connection;
 use Elig45\BagistoHelloAsso\Services\HelloAssoApiClient;
 use Elig45\BagistoHelloAsso\Services\HelloAssoCheckoutService;
 use Elig45\BagistoHelloAsso\Services\InstallmentPlanBuilder;
+use Elig45\BagistoHelloAsso\Services\OrderSettlementService;
 
-function checkoutServiceForTest(HelloAssoApiClient $api): HelloAssoCheckoutService
-{
-    return new class($api, new InstallmentPlanBuilder) extends HelloAssoCheckoutService
+function checkoutServiceForTest(
+    HelloAssoApiClient $api,
+    ?OrderSettlementService $settlement = null,
+): HelloAssoCheckoutService {
+    return new class($api, new InstallmentPlanBuilder, $settlement ?? Mockery::mock(OrderSettlementService::class)) extends HelloAssoCheckoutService
     {
         protected function cartSnapshot(object $cart): array
         {
@@ -114,6 +118,73 @@ it('reuses an unresolved checkout for an unchanged cart to avoid duplicate inten
     $second = $service->start($connection, $cart, 'mejf');
 
     expect($second->id)->toBe($first->id)
+        ->and(CheckoutAttempt::query()->count())->toBe(1);
+});
+
+it('reconciles an expired checkout and creates a new intent only when HelloAsso confirms it is unpaid', function () {
+    $connection = sandboxConnection();
+    $api = Mockery::mock(HelloAssoApiClient::class);
+    $api->shouldReceive('post')->twice()->andReturn(
+        ['id' => 9010, 'redirectUrl' => 'https://www.helloasso-sandbox.com/checkout/9010'],
+        ['id' => 9011, 'redirectUrl' => 'https://www.helloasso-sandbox.com/checkout/9011'],
+    );
+    $settlement = Mockery::mock(OrderSettlementService::class);
+    $settlement->shouldReceive('reconcile')->once()->andReturnUsing(function (CheckoutAttempt $attempt) {
+        $attempt->update(['status' => 'abandoned']);
+
+        return 'abandoned';
+    });
+    $service = checkoutServiceForTest($api, $settlement);
+    $cart = helloAssoCheckoutCart();
+
+    $first = $service->start($connection, $cart, 'mejf');
+    $first->update(['created_at' => now()->subMinutes(46), 'status' => 'pending']);
+    $second = $service->start($connection, $cart, 'mejf');
+
+    expect($second->checkout_intent_id)->toBe(9011)
+        ->and($first->fresh()->status)->toBe('abandoned')
+        ->and(CheckoutAttempt::query()->count())->toBe(2);
+});
+
+it('does not create a duplicate intent when an expired checkout remains unresolved remotely', function () {
+    $connection = sandboxConnection();
+    $api = Mockery::mock(HelloAssoApiClient::class);
+    $api->shouldReceive('post')->once()->andReturn([
+        'id' => 9012,
+        'redirectUrl' => 'https://www.helloasso-sandbox.com/checkout/9012',
+    ]);
+    $settlement = Mockery::mock(OrderSettlementService::class);
+    $settlement->shouldReceive('reconcile')->once()->andReturn('payment_recorded');
+    $service = checkoutServiceForTest($api, $settlement);
+    $cart = helloAssoCheckoutCart();
+
+    $attempt = $service->start($connection, $cart, 'mejf');
+    $attempt->update(['created_at' => now()->subMinutes(17), 'status' => 'pending']);
+
+    expect(fn () => $service->start($connection, $cart, 'mejf'))
+        ->toThrow(CheckoutStillPending::class, 'The previous HelloAsso Checkout is still unresolved.')
+        ->and(CheckoutAttempt::query()->count())->toBe(1);
+});
+
+it('keeps an unresolved SEPA checkout blocked during delayed bank confirmation', function () {
+    $connection = sandboxConnection();
+    $connection->enable_sepa = true;
+    $connection->save();
+    $api = Mockery::mock(HelloAssoApiClient::class);
+    $api->shouldReceive('post')->once()->andReturn([
+        'id' => 9013,
+        'redirectUrl' => 'https://www.helloasso-sandbox.com/checkout/9013',
+    ]);
+    $settlement = Mockery::mock(OrderSettlementService::class);
+    $settlement->shouldReceive('reconcile')->once()->andReturn('pending');
+    $service = checkoutServiceForTest($api, $settlement);
+    $cart = helloAssoCheckoutCart();
+
+    $attempt = $service->start($connection, $cart, 'mejf');
+    $attempt->update(['created_at' => now()->subMinutes(17), 'status' => 'pending']);
+
+    expect(fn () => $service->start($connection, $cart, 'mejf'))
+        ->toThrow(CheckoutStillPending::class, 'The previous HelloAsso Checkout is still unresolved.')
         ->and(CheckoutAttempt::query()->count())->toBe(1);
 });
 

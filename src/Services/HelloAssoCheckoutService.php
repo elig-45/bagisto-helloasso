@@ -2,6 +2,7 @@
 
 namespace Elig45\BagistoHelloAsso\Services;
 
+use Elig45\BagistoHelloAsso\Exceptions\CheckoutStillPending;
 use Elig45\BagistoHelloAsso\Models\CheckoutAttempt;
 use Elig45\BagistoHelloAsso\Models\Connection;
 use Illuminate\Support\Str;
@@ -27,6 +28,7 @@ class HelloAssoCheckoutService
     public function __construct(
         protected HelloAssoApiClient $api,
         protected InstallmentPlanBuilder $plans,
+        protected OrderSettlementService $settlement,
     ) {}
 
     public function start(Connection $connection, object $cart, string $channelCode, int $installmentCount = 1): CheckoutAttempt
@@ -56,18 +58,30 @@ class HelloAssoCheckoutService
             ->first();
 
         if ($existing) {
-            if (
+            $sameCheckout =
                 (int) $existing->installment_count === $installmentCount
                 && (int) $existing->total_amount === $amount
                 && hash_equals((string) $existing->cart_fingerprint, $fingerprint)
                 && $existing->environment === $connection->environment
                 && $existing->auth_mode === $connection->auth_mode
-                && $existing->organization_slug === $connection->organization_slug
-            ) {
-                return $existing;
-            }
+                && $existing->organization_slug === $connection->organization_slug;
 
-            throw new \RuntimeException('An unresolved HelloAsso Checkout already exists for this cart.');
+            if ($existing->created_at?->lte(now()->subMinutes(CheckoutAttempt::REDIRECT_RETRY_AFTER_MINUTES))) {
+                $this->settlement->reconcile($existing, $connection);
+                $existing->refresh();
+
+                if ($existing->order_id) {
+                    return $existing;
+                }
+
+                if ($existing->status !== 'abandoned') {
+                    throw new CheckoutStillPending('The previous HelloAsso Checkout is still unresolved.');
+                }
+            } elseif ($sameCheckout) {
+                return $existing;
+            } else {
+                throw new CheckoutStillPending('The previous HelloAsso Checkout is still unresolved.');
+            }
         }
 
         $reference = (string) Str::uuid();

@@ -84,15 +84,15 @@ it('recognizes a declined checkout only when every known payment is refused', fu
         ->and($method->invoke($service, [['state' => 'Refused'], ['state' => 'Authorized']]))->toBeFalse();
 });
 
-it('abandons unpaid card checkouts after 45 minutes and waits through SEPA webhook retries', function () {
+it('uses the separate HelloAsso abandonment windows for card and SEPA checkouts', function () {
     $service = (new ReflectionClass(OrderSettlementService::class))->newInstanceWithoutConstructor();
     $method = new ReflectionMethod(OrderSettlementService::class, 'shouldAbandonUnpaidCheckout');
 
     expect($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subMinutes(46), 'sepa_enabled' => false])))->toBeTrue()
         ->and($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subMinutes(44), 'sepa_enabled' => false])))->toBeFalse()
-        ->and($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subHours(27), 'sepa_enabled' => true])))->toBeFalse()
         ->and($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subHours(29), 'sepa_enabled' => true])))->toBeTrue()
-        ->and($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subHours(27)])))->toBeFalse();
+        ->and($method->invoke($service, new CheckoutAttempt(['created_at' => now()->subHours(27), 'sepa_enabled' => true])))->toBeFalse()
+        ->and($method->invoke($service, new CheckoutAttempt(['sepa_enabled' => true])))->toBeFalse();
 });
 
 it('marks a remotely checked unpaid card attempt abandoned so its cart can start a fresh checkout', function () {

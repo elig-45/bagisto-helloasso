@@ -2,6 +2,7 @@
 
 namespace Elig45\BagistoHelloAsso\Http\Controllers\Shop;
 
+use Elig45\BagistoHelloAsso\Exceptions\CheckoutStillPending;
 use Elig45\BagistoHelloAsso\Models\CheckoutAttempt;
 use Elig45\BagistoHelloAsso\Models\Connection;
 use Elig45\BagistoHelloAsso\Models\WebhookReceipt;
@@ -60,9 +61,25 @@ class CheckoutController extends Controller
 
         try {
             $attempt = $this->checkout->start($connection, $cart, $channelCode, $count);
+
+            if ($attempt->order_id) {
+                session()->flash('order_id', $attempt->order_id);
+
+                return redirect()->route('shop.checkout.onepage.success')
+                    ->with(
+                        $attempt->fulfillment_ready ? 'success' : 'info',
+                        $attempt->fulfillment_ready
+                            ? trans('helloasso::app.checkout.payment-confirmed')
+                            : trans('helloasso::app.checkout.order-pending-payment'),
+                    );
+            }
+
             session()->put('helloasso.attempt.'.$channelCode, $attempt->id);
 
             return redirect()->away($attempt->redirect_url);
+        } catch (CheckoutStillPending) {
+            return redirect()->route('shop.checkout.cart.index')
+                ->with('info', trans('helloasso::app.checkout.payment-pending'));
         } catch (\Throwable $exception) {
             report($exception);
 
